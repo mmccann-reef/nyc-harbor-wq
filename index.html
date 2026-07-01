@@ -733,8 +733,9 @@ function colorMarkers() {
     const avg = avgs[name];
 
     if (avg === undefined) {
-      m.setStyle({ fillColor: '#2a3a4a', fillOpacity: .45,
-                   radius: sel ? 10 : 7, weight: sel ? 2.5 : 1.5, color: sel ? '#fff' : 'rgba(255,255,255,.4)' });
+      m.setStyle({ fillColor: '#4a6070', fillOpacity: .15,
+                   radius: sel ? 10 : 5, weight: .8,
+                   color: 'rgba(255,255,255,.12)' });
     } else {
       const color = lerpColor(avg, vmin, vmax, scale);
       m.setStyle({ fillColor: color, fillOpacity: .9,
@@ -846,7 +847,7 @@ function drawTimeSeries(id, data, color, unit) {
   }
 
   const pts = data.map(d => ({ x: d[0], y: d[1] }));
-  const dense = pts.length > 800;
+  const dense = pts.length > 100;   // dots-only above 100 points
 
   charts[id] = new Chart(canvas.getContext('2d'), {
     type: 'scatter',
@@ -854,7 +855,7 @@ function drawTimeSeries(id, data, color, unit) {
       data: pts,
       borderColor: color, backgroundColor: color + '18',
       pointRadius: dense ? 1.5 : 2.5, pointHoverRadius: 5,
-      showLine: pts.length <= 300, borderWidth: 1.4,
+      showLine: !dense, borderWidth: 1.4,
     }]},
     options: { ...CHART_DEFAULTS,
       plugins: { legend: { display: false }, tooltip: { callbacks: {
@@ -1114,7 +1115,9 @@ function setDefaultYears() {
 function filterYr(series) {
   const lo = new Date(S.yrFrom, 0, 1).getTime();
   const hi = new Date(S.yrTo, 11, 31, 23, 59).getTime();
-  return series.filter(([ts]) => ts >= lo && ts <= hi);
+  return series
+    .filter(([ts]) => ts >= lo && ts <= hi)
+    .sort((a, b) => a[0] - b[0]);   // ← sort by date ascending
 }
 
 function mean(a) { return a.reduce((s,v) => s+v, 0) / a.length; }

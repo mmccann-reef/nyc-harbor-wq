@@ -510,34 +510,34 @@ const DEP_COORDS = {
   'BB4': { lat: 40.6175, lon: -74.0182 },  // Mouth of Bergen Basin
   'BR1': { lat: 40.8882, lon: -73.8702 },  // 233rd St & Bronx River
   'BR3': { lat: 40.8322, lon: -73.8723 },  // Westchester Ave & Bronx River
-  'BR5': { lat: 40.8141, lon: -73.8763 },  // Mouth of Bronx River
-  'CIC2':{ lat: 40.5901, lon: -73.9926 },  // Cropsy Ave & Coney Island Creek
-  'CIC3':{ lat: 40.6011, lon: -73.9979 },  // Coney Island Creek
-  'F1':  { lat: 40.6599, lon: -73.8819 },  // Head of Fresh Creek
-  'F5':  { lat: 40.6424, lon: -73.8863 },  // Mouth of Fresh Creek
-  'FB1': { lat: 40.7823, lon: -73.8691 },  // Flushing Bay North
-  'FLC1':{ lat: 40.7629, lon: -73.8344 },  // Flushing Creek
-  'FLC2':{ lat: 40.7619, lon: -73.8413 },  // Mouth of Flushing Creek
+  'BR5': { lat: 40.8082, lon: -73.8762 },  // Mouth of Bronx River
+  'CIC2':{ lat: 40.5876, lon: -73.9955 },  // Cropsy Ave & Coney Island Creek
+  'CIC3':{ lat: 40.5918, lon: -73.9991 },  // Coney Island Creek
+  'F1':  { lat: 40.6605, lon: -73.8813 },  // Head of Fresh Creek
+  'F5':  { lat: 40.6421, lon: -73.8862 },  // Mouth of Fresh Creek
+  'FB1': { lat: 40.7784, lon: -73.8510 },  // Flushing Bay North
+  'FLC1':{ lat: 40.7591, lon: -73.8327 },  // Flushing Creek
+  'FLC2':{ lat: 40.7637, lon: -73.8421 },  // Mouth of Flushing Creek
   'GB1': { lat: 40.5990, lon: -74.0069 },  // Gravesend Bay
-  'GC3': { lat: 40.6793, lon: -74.0020 },  // Union Street Bridge (Gowanus)
-  'GC4': { lat: 40.6762, lon: -73.9982 },  // Carroll Street Bridge
-  'GC5': { lat: 40.6740, lon: -73.9964 },  // 3rd Street Bridge
-  'GC6': { lat: 40.6721, lon: -73.9946 },  // 9th Street Bridge
-  'HC1': { lat: 40.6499, lon: -73.8650 },  // Hendrix Creek Head
-  'HC2': { lat: 40.6429, lon: -73.8619 },  // Hendrix Creek by 26th Ward
-  'HC3': { lat: 40.6390, lon: -73.8631 },  // Hendrix Creek under Belt Pkwy
+  'GC3': { lat: 40.6779, lon: -73.9997 },  // Union Street Bridge (Gowanus)
+  'GC4': { lat: 40.6756, lon: -73.9994 },  // Carroll Street Bridge
+  'GC5': { lat: 40.6742, lon: -73.9990 },  // 3rd Street Bridge
+  'GC6': { lat: 40.6718, lon: -73.9982 },  // 9th Street Bridge
+  'HC1': { lat: 40.6494, lon: -73.8648 },  // Hendrix Creek Head
+  'HC2': { lat: 40.6420, lon: -73.8616 },  // Hendrix Creek by 26th Ward
+  'HC3': { lat: 40.6385, lon: -73.8628 },  // Hendrix Creek under Belt Pkwy
   'HR1': { lat: 40.8524, lon: -73.8310 },  // Bartow Ave Br & Hutchinson River
   'HR2': { lat: 40.8603, lon: -73.8446 },  // Boston Rd. Br. & Conner Ave
   'HR03':{ lat: 40.8663, lon: -73.8512 },  // Conner Street Pump Station
   'LN1': { lat: 40.7901, lon: -73.7240 },  // Little Neck Bay South
-  'NC0': { lat: 40.7021, lon: -73.9127 },  // English Kills
-  'NC1': { lat: 40.7161, lon: -73.9009 },  // Maspeth Creek
-  'NC2': { lat: 40.7139, lon: -73.8973 },  // Amoco Tank Farm
-  'NC3': { lat: 40.7119, lon: -73.8952 },  // Whale Creek
-  'PB2': { lat: 40.6300, lon: -73.9079 },  // Middle of Paerdegat Basin
-  'PB3': { lat: 40.6209, lon: -73.9121 },  // Mouth of Paerdegat Basin
-  'SP1': { lat: 40.6613, lon: -73.8360 },  // Spring Creek Head
-  'SP2': { lat: 40.6472, lon: -73.8381 },  // Spring Creek under Belt Pkwy
+  'NC0': { lat: 40.7048, lon: -73.9145 },  // English Kills
+  'NC1': { lat: 40.7188, lon: -73.8983 },  // Maspeth Creek
+  'NC2': { lat: 40.7172, lon: -73.8956 },  // Amoco Tank Farm
+  'NC3': { lat: 40.7152, lon: -73.8937 },  // Whale Creek
+  'PB2': { lat: 40.6312, lon: -73.9062 },  // Middle of Paerdegat Basin
+  'PB3': { lat: 40.6228, lon: -73.9098 },  // Mouth of Paerdegat Basin
+  'SP1': { lat: 40.6617, lon: -73.8353 },  // Spring Creek Head
+  'SP2': { lat: 40.6469, lon: -73.8378 },  // Spring Creek under Belt Pkwy
   'TB1': { lat: 40.5940, lon: -73.7742 },  // Thurston Basin
   'TB2': { lat: 40.5908, lon: -73.7703 },  // Thurston Basin Mouth
   'TR1': { lat: 40.5779, lon: -73.9770 },  // West 78th St (Triathlon)
@@ -679,9 +679,13 @@ function parseCSV(rows) {
       if (DEP_COORDS[site]) {
         sites[site] = DEP_COORDS[site];
       } else if (latCol && lonCol) {
-        const lat = parseFloat(row[latCol]);
-        const lon = parseFloat(row[lonCol]);
-        if (!isNaN(lat) && !isNaN(lon)) {
+        let lat = parseFloat(row[latCol]);
+        let lon = parseFloat(row[lonCol]);
+        // Auto-fix swapped coords: NYC lat ~40-41 (positive), lon ~-73 to -74 (negative)
+        if (!isNaN(lat) && !isNaN(lon) && lat < 0 && lon > 0) {
+          [lat, lon] = [lon, lat];
+        }
+        if (!isNaN(lat) && !isNaN(lon) && lat > 39 && lat < 42 && lon < -72 && lon > -75) {
           sites[site] = { lat, lon };
         } else if (!sites[site]) {
           sites[site] = { missing: true };

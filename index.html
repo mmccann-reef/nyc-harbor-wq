@@ -575,11 +575,15 @@ function parseCSV(rows) {
     const site = (row[siteCol] || '').trim();
     if (!site || site.toUpperCase().startsWith('X')) continue;
 
-    // Coordinates
-    if (!sites[site] && latCol && lonCol) {
+    // Coordinates — keep trying across rows until found
+    if ((!sites[site] || sites[site].missing) && latCol && lonCol) {
       const lat = parseFloat(row[latCol]);
       const lon = parseFloat(row[lonCol]);
-      if (!isNaN(lat) && !isNaN(lon)) sites[site] = { lat, lon };
+      if (!isNaN(lat) && !isNaN(lon)) {
+        sites[site] = { lat, lon };
+      } else if (!sites[site]) {
+        sites[site] = { missing: true };   // placeholder so we still collect data
+      }
     }
 
     // Date → timestamp ms
@@ -818,7 +822,7 @@ function buildMarkers() {
   for (const k in markers) delete markers[k];
 
   for (const [name, pos] of Object.entries(S.data.sites)) {
-    if (!pos?.lat || !pos?.lon) continue;
+    if (!pos?.lat || !pos?.lon || pos.missing) continue;
 
     const m = L.circleMarker([pos.lat, pos.lon], {
       radius: 7, fillOpacity: .85,

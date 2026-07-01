@@ -341,6 +341,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
     <div class="loading-veil" id="veil">
       <div class="spin"></div>
       <div class="loading-txt" id="veilTxt">Loading data…</div>
+      <div style="width:220px; height:3px; background:var(--border); border-radius:2px; margin-top:4px;">
+        <div id="veilBar" style="height:100%; width:0%; background:var(--accent); border-radius:2px; transition:width .3s;"></div>
+      </div>
     </div>
   </div>
 
@@ -641,115 +644,130 @@ function initMap() {
   ).addTo(leafmap);
 }
 
-/* ── CSV loading ─────────────────────────────────────────────────────────── */
+/* ── CSV loading — streamed in chunks via web worker ─────────────────────── */
 function loadCSV() {
-  txt(`Loading ${CSV_FILE}…`);
+  txt(`Downloading ${CSV_FILE}…`);
+
+  // Accumulate state across chunks
+  const appData = {
+    metadata: { source: CSV_FILE, generated: today(), record_count: 0 },
+    sites: {}, parameters: {}, data: {},
+  };
+  let cfg      = null;   // column config, set on first chunk
+  let rowCount = 0;
+  let totalBytes = 0;
+
+  // Try to get file size for progress bar
+  fetch(CSV_FILE, { method: 'HEAD' })
+    .then(r => { totalBytes = parseInt(r.headers.get('content-length') || '0'); })
+    .catch(() => {});
 
   Papa.parse(CSV_FILE, {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    step: null,   // parse all at once
-    complete: function(results) {
-      txt('Processing…');
-      setTimeout(() => {          // let the UI update first
-        try {
-          const appData = parseCSV(results.data);
-          onDataReady(appData);
-        } catch(e) {
-          showLoadError(e.message);
+    download:      true,
+    header:        true,
+    skipEmptyLines:true,
+    worker:        true,           // parse off main thread
+    chunkSize:     1024 * 256,     // 256 KB chunks
+
+    chunk: function(results) {
+      const rows = results.data;
+      if (!rows.length) return;
+
+      // One-time column discovery from first chunk
+      if (!cfg) {
+        try { cfg = discoverColumns(rows[0]); }
+        catch(e) { showLoadError(e.message); return; }
+        txt('Processing…');
+      }
+
+      for (const row of rows) {
+        const site = (row[cfg.siteCol] || '').trim();
+        if (!site || !ACTIVE_SITES.has(site)) continue;
+
+        // Coordinates
+        if (!appData.sites[site] || appData.sites[site].missing) {
+          if (DEP_COORDS[site]) {
+            appData.sites[site] = DEP_COORDS[site];
+          } else if (cfg.latCol && cfg.lonCol) {
+            let lat = parseFloat(row[cfg.latCol]);
+            let lon = parseFloat(row[cfg.lonCol]);
+            if (!isNaN(lat) && !isNaN(lon) && lat < 0 && lon > 0) [lat, lon] = [lon, lat];
+            if (!isNaN(lat) && !isNaN(lon) && lat > 39 && lat < 42 && lon < -72 && lon > -75) {
+              appData.sites[site] = { lat, lon };
+            } else if (!appData.sites[site]) {
+              appData.sites[site] = { missing: true };
+            }
+          } else if (!appData.sites[site]) {
+            appData.sites[site] = { missing: true };
+          }
         }
-      }, 20);
+
+        // Date
+        const raw = row[cfg.dateCol] || '';
+        if (!raw) continue;
+        const ts = new Date(raw).getTime();
+        if (isNaN(ts)) continue;
+
+        if (!appData.data[site]) appData.data[site] = {};
+        for (const col of cfg.paramCols) {
+          const v = parseFloat(row[col]);
+          if (!isNaN(v)) {
+            if (!appData.data[site][col]) appData.data[site][col] = [];
+            appData.data[site][col].push([ts, v]);
+          }
+        }
+        rowCount++;
+      }
+
+      // Update progress
+      const cursor = results.meta?.cursor || 0;
+      const pct = totalBytes > 0 ? Math.min(99, Math.round(cursor / totalBytes * 100)) : 0;
+      txt(`Processing… ${rowCount.toLocaleString()} rows`);
+      const bar = document.getElementById('veilBar');
+      if (bar && pct > 0) bar.style.width = pct + '%';
     },
-    error: function(err) {
-      showLoadError(`Could not load ${CSV_FILE}. Make sure it is in the same folder as index.html.`);
-    }
+
+    complete: function() {
+      if (!cfg) { showLoadError(`Could not parse ${CSV_FILE}`); return; }
+
+      // Build parameter list — only include cols that have data
+      for (const col of cfg.paramCols) {
+        const hasData = Object.values(appData.data).some(s => s[col]?.length);
+        if (hasData) appData.parameters[col] = colLabel(col);
+      }
+      appData.metadata.record_count = rowCount;
+
+      const bar = document.getElementById('veilBar');
+      if (bar) bar.style.width = '100%';
+      setTimeout(() => onDataReady(appData), 80);
+    },
+
+    error: function() {
+      showLoadError(`Could not load ${CSV_FILE}.<br>Make sure it is in the same folder as index.html.`);
+    },
   });
 }
 
-function parseCSV(rows) {
-  if (!rows.length) throw new Error('CSV is empty');
+function discoverColumns(firstRow) {
+  const headers = Object.keys(firstRow);
 
-  const headers = Object.keys(rows[0]);
-
-  // Site name column
   const siteCol = headers.find(h => h.trim() === 'Sampling Location')
                || headers.find(h => h.toLowerCase().includes('sampling location'))
-               || headers.find(h => h.toLowerCase().includes('site_name'))
                || null;
   if (!siteCol) throw new Error('Could not find site name column (expected "Sampling Location")');
 
-  // Date column
   const dateCol = headers.find(h => h.trim() === 'Sample Date')
                || headers.find(h => h.toLowerCase().includes('sample_date'))
                || null;
   if (!dateCol) throw new Error('Could not find date column (expected "Sample Date")');
 
-  // Coordinate columns
-  const latCol = headers.find(h => h.trim() === 'Lat')   || null;
-  const lonCol = headers.find(h => h.trim() === 'Long')  || null;
+  const latCol = headers.find(h => h.trim() === 'Lat')  || null;
+  const lonCol = headers.find(h => h.trim() === 'Long') || null;
 
-  // Parameter columns: not in skip list, not site/date/lat/lon
   const nonParam = new Set([siteCol, dateCol, latCol, lonCol]);
   const paramCols = headers.filter(h => !CSV_SKIP.has(h.trim()) && !nonParam.has(h));
 
-  const sites = {};
-  const data  = {};
-
-  for (const row of rows) {
-    const site = (row[siteCol] || '').trim();
-    if (!site || site.toUpperCase().startsWith('X')) continue;
-    if (!ACTIVE_SITES.has(site)) continue;
-
-    // Coordinates — hardcoded table first, then CSV lat/lon, then placeholder
-    if (!sites[site] || sites[site].missing) {
-      if (DEP_COORDS[site]) {
-        sites[site] = DEP_COORDS[site];
-      } else if (latCol && lonCol) {
-        let lat = parseFloat(row[latCol]);
-        let lon = parseFloat(row[lonCol]);
-        // Auto-fix swapped coords: NYC lat ~40-41 (positive), lon ~-73 to -74 (negative)
-        if (!isNaN(lat) && !isNaN(lon) && lat < 0 && lon > 0) {
-          [lat, lon] = [lon, lat];
-        }
-        if (!isNaN(lat) && !isNaN(lon) && lat > 39 && lat < 42 && lon < -72 && lon > -75) {
-          sites[site] = { lat, lon };
-        } else if (!sites[site]) {
-          sites[site] = { missing: true };
-        }
-      } else if (!sites[site]) {
-        sites[site] = { missing: true };
-      }
-    }
-
-    // Date → timestamp ms
-    const raw = row[dateCol] || '';
-    if (!raw) continue;
-    const ts = new Date(raw).getTime();
-    if (isNaN(ts)) continue;
-
-    if (!data[site]) data[site] = {};
-
-    for (const col of paramCols) {
-      const v = parseFloat(row[col]);
-      if (!isNaN(v)) {
-        if (!data[site][col]) data[site][col] = [];
-        data[site][col].push([ts, v]);
-      }
-    }
-  }
-
-  // Build parameter list — only cols that actually have data
-  const parameters = {};
-  for (const col of paramCols) {
-    const hasData = Object.values(data).some(s => s[col]?.length);
-    if (hasData) parameters[col] = colLabel(col);
-  }
-
-  return {
-    metadata: { source: CSV_FILE, generated: today(), record_count: rows.length },
-    sites, parameters, data,
-  };
+  return { siteCol, dateCol, latCol, lonCol, paramCols };
 }
 
 function showLoadError(msg) {

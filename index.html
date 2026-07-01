@@ -644,131 +644,28 @@ function initMap() {
   ).addTo(leafmap);
 }
 
-/* ── CSV loading — streamed in chunks via web worker ─────────────────────── */
+/* ── Data loading — reads pre-processed data.json ───────────────────────── */
 function loadCSV() {
-  txt(`Downloading ${CSV_FILE}…`);
-
-  // Accumulate state across chunks
-  const appData = {
-    metadata: { source: CSV_FILE, generated: today(), record_count: 0 },
-    sites: {}, parameters: {}, data: {},
-  };
-  let cfg      = null;   // column config, set on first chunk
-  let rowCount = 0;
-  let totalBytes = 0;
-
-  // Try to get file size for progress bar
-  fetch(CSV_FILE, { method: 'HEAD' })
-    .then(r => { totalBytes = parseInt(r.headers.get('content-length') || '0'); })
-    .catch(() => {});
-
-  Papa.parse(CSV_FILE, {
-    download:      true,
-    header:        true,
-    skipEmptyLines:true,
-    worker:        true,           // parse off main thread
-    chunkSize:     1024 * 256,     // 256 KB chunks
-
-    chunk: function(results) {
-      const rows = results.data;
-      if (!rows.length) return;
-
-      // One-time column discovery from first chunk
-      if (!cfg) {
-        try { cfg = discoverColumns(rows[0]); }
-        catch(e) { showLoadError(e.message); return; }
-        txt('Processing…');
-      }
-
-      for (const row of rows) {
-        const site = (row[cfg.siteCol] || '').trim();
-        if (!site || !ACTIVE_SITES.has(site)) continue;
-
-        // Coordinates
-        if (!appData.sites[site] || appData.sites[site].missing) {
-          if (DEP_COORDS[site]) {
-            appData.sites[site] = DEP_COORDS[site];
-          } else if (cfg.latCol && cfg.lonCol) {
-            let lat = parseFloat(row[cfg.latCol]);
-            let lon = parseFloat(row[cfg.lonCol]);
-            if (!isNaN(lat) && !isNaN(lon) && lat < 0 && lon > 0) [lat, lon] = [lon, lat];
-            if (!isNaN(lat) && !isNaN(lon) && lat > 39 && lat < 42 && lon < -72 && lon > -75) {
-              appData.sites[site] = { lat, lon };
-            } else if (!appData.sites[site]) {
-              appData.sites[site] = { missing: true };
-            }
-          } else if (!appData.sites[site]) {
-            appData.sites[site] = { missing: true };
-          }
-        }
-
-        // Date
-        const raw = row[cfg.dateCol] || '';
-        if (!raw) continue;
-        const ts = new Date(raw).getTime();
-        if (isNaN(ts)) continue;
-
-        if (!appData.data[site]) appData.data[site] = {};
-        for (const col of cfg.paramCols) {
-          const v = parseFloat(row[col]);
-          if (!isNaN(v)) {
-            if (!appData.data[site][col]) appData.data[site][col] = [];
-            appData.data[site][col].push([ts, v]);
-          }
-        }
-        rowCount++;
-      }
-
-      // Update progress
-      const cursor = results.meta?.cursor || 0;
-      const pct = totalBytes > 0 ? Math.min(99, Math.round(cursor / totalBytes * 100)) : 0;
-      txt(`Processing… ${rowCount.toLocaleString()} rows`);
-      const bar = document.getElementById('veilBar');
-      if (bar && pct > 0) bar.style.width = pct + '%';
-    },
-
-    complete: function() {
-      if (!cfg) { showLoadError(`Could not parse ${CSV_FILE}`); return; }
-
-      // Build parameter list — only include cols that have data
-      for (const col of cfg.paramCols) {
-        const hasData = Object.values(appData.data).some(s => s[col]?.length);
-        if (hasData) appData.parameters[col] = colLabel(col);
-      }
-      appData.metadata.record_count = rowCount;
-
+  txt('Loading data.json…');
+  fetch('data.json')
+    .then(r => {
+      if (!r.ok) throw new Error('data.json not found');
+      return r.json();
+    })
+    .then(appData => {
       const bar = document.getElementById('veilBar');
       if (bar) bar.style.width = '100%';
-      setTimeout(() => onDataReady(appData), 80);
-    },
-
-    error: function() {
-      showLoadError(`Could not load ${CSV_FILE}.<br>Make sure it is in the same folder as index.html.`);
-    },
-  });
+      setTimeout(() => onDataReady(appData), 50);
+    })
+    .catch(() => {
+      showLoadError(
+        'Could not load <code style="color:var(--accent)">data.json</code>.<br>' +
+        'Run <code style="color:var(--accent)">process_data.R</code> first to generate it.'
+      );
+    });
 }
 
-function discoverColumns(firstRow) {
-  const headers = Object.keys(firstRow);
-
-  const siteCol = headers.find(h => h.trim() === 'Sampling Location')
-               || headers.find(h => h.toLowerCase().includes('sampling location'))
-               || null;
-  if (!siteCol) throw new Error('Could not find site name column (expected "Sampling Location")');
-
-  const dateCol = headers.find(h => h.trim() === 'Sample Date')
-               || headers.find(h => h.toLowerCase().includes('sample_date'))
-               || null;
-  if (!dateCol) throw new Error('Could not find date column (expected "Sample Date")');
-
-  const latCol = headers.find(h => h.trim() === 'Lat')  || null;
-  const lonCol = headers.find(h => h.trim() === 'Long') || null;
-
-  const nonParam = new Set([siteCol, dateCol, latCol, lonCol]);
-  const paramCols = headers.filter(h => !CSV_SKIP.has(h.trim()) && !nonParam.has(h));
-
-  return { siteCol, dateCol, latCol, lonCol, paramCols };
-}
+function discoverColumns() {}   // not used with JSON path
 
 function showLoadError(msg) {
   document.getElementById('veil').innerHTML =

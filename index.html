@@ -451,6 +451,105 @@ const charts = {};   // id → Chart instance
 const markers = {};  // siteName → L.CircleMarker
 let   leafmap = null;
 
+/* ── Hardcoded DEP station coordinates (source: NYC DEP site map) ────────── */
+const DEP_COORDS = {
+  // Hudson River Transects
+  'N1':  { lat: 40.8775, lon: -73.9127 },  // Mt. St. Vincent
+  'N3B': { lat: 40.8116, lon: -73.9501 },  // W. 125th Street
+  'N4':  { lat: 40.7602, lon: -73.9976 },  // W. 42nd Street
+  'N5':  { lat: 40.7012, lon: -74.0177 },  // Pier A - The Battery
+  'N6':  { lat: 40.6272, lon: -74.0402 },  // Bell Buoy 31
+  'N7':  { lat: 40.6584, lon: -74.0649 },  // Robbins Reef
+  'N8':  { lat: 40.6120, lon: -74.0531 },  // The Narrows Buoy 28
+  'N9':  { lat: 40.5726, lon: -74.0019 },  // Steeplechase Pier
+  'N16': { lat: 40.5562, lon: -73.9416 },  // Rockaway Point
+  'NR1': { lat: 40.7754, lon: -74.0059 },  // North River WWTP
+  'G2':  { lat: 40.6739, lon: -73.9951 },  // Gowanus Canal
+  // East River
+  'E2':  { lat: 40.7399, lon: -73.9716 },  // E. 23rd Street
+  'E4':  { lat: 40.7797, lon: -73.9318 },  // Hell Gate
+  'E6':  { lat: 40.7773, lon: -73.8830 },  // Flushing Bay
+  'E7':  { lat: 40.8038, lon: -73.8399 },  // Whitestone Bridge
+  'E8':  { lat: 40.8055, lon: -73.7955 },  // Throg\'s Neck Bridge
+  'E10': { lat: 40.8513, lon: -73.7627 },  // Hart Island
+  'E11': { lat: 40.8303, lon: -73.7404 },  // Little Neck Bay
+  'E12': { lat: 40.8621, lon: -73.8028 },  // Eastchester Bay Buoy N°6
+  'E13': { lat: 40.8281, lon: -73.8309 },  // Westchester Creek Buoy N°2
+  'E14': { lat: 40.8142, lon: -73.8593 },  // Mouth of Bronx River Buoy N°2
+  'E15': { lat: 40.7651, lon: -73.8673 },  // Flushing Bay South Buoy N°2
+  // Jamaica Bay
+  'J1':  { lat: 40.5682, lon: -73.9470 },  // Rockaway Inlet
+  'J2':  { lat: 40.6041, lon: -73.9254 },  // Mill Basin
+  'J3':  { lat: 40.6339, lon: -73.8952 },  // Canarsie Pier
+  'J5':  { lat: 40.6176, lon: -73.8763 },  // Railroad Trestle
+  'J8':  { lat: 40.6434, lon: -73.8758 },  // Bergen Creek
+  'J9A': { lat: 40.6334, lon: -73.8795 },  // Fresh Creek Buoy C21
+  'J10': { lat: 40.6253, lon: -73.9039 },  // Paerdegat Basin
+  'J11': { lat: 40.5843, lon: -73.9442 },  // Sheepshead Bay
+  'J12': { lat: 40.6096, lon: -73.8373 },  // Grassy Bay
+  'JA1': { lat: 40.6473, lon: -73.8232 },  // Jamaica WWTP Outfall
+  'GHC': { lat: 40.6013, lon: -73.8088 },  // Grass Hassock Channel
+  'HOB': { lat: 40.5973, lon: -73.7830 },  // Head of Bay
+  'N9A': { lat: 40.5738, lon: -73.9873 },  // Coney Is. Outfall
+  // Jamaica Bay Interior
+  'J14': { lat: 40.6139, lon: -73.8564 },  // West of Broad Channel
+  'J15': { lat: 40.5939, lon: -73.8283 },  // Pumpkin Patch Channel
+  'J16': { lat: 40.6078, lon: -73.8314 },  // Horse Channel
+  // Staten Island Transects
+  'K1':  { lat: 40.6433, lon: -74.0739 },  // St. George
+  'K2':  { lat: 40.6401, lon: -74.1453 },  // Shooters Island
+  'K3':  { lat: 40.6339, lon: -74.1524 },  // A&K Railroad Bridge
+  'K4':  { lat: 40.5719, lon: -74.1833 },  // Fresh Kills
+  'K5':  { lat: 40.5172, lon: -74.2440 },  // Tottenville
+  'K5A': { lat: 40.5031, lon: -74.2641 },  // Raritan River
+  'K6':  { lat: 40.5083, lon: -74.1828 },  // Old Orchard Light
+  // Tributaries
+  'AC1': { lat: 40.7713, lon: -73.7445 },  // Alley Creek & Northern Blvd
+  'AC2': { lat: 40.7641, lon: -73.7524 },  // Alley Creek Outfall
+  'BB2': { lat: 40.6493, lon: -74.0810 },  // Head of Bergen Basin
+  'BB4': { lat: 40.6175, lon: -74.0182 },  // Mouth of Bergen Basin
+  'BR1': { lat: 40.8882, lon: -73.8702 },  // 233rd St & Bronx River
+  'BR3': { lat: 40.8322, lon: -73.8723 },  // Westchester Ave & Bronx River
+  'BR5': { lat: 40.8141, lon: -73.8763 },  // Mouth of Bronx River
+  'CIC2':{ lat: 40.5901, lon: -73.9926 },  // Cropsy Ave & Coney Island Creek
+  'CIC3':{ lat: 40.6011, lon: -73.9979 },  // Coney Island Creek
+  'F1':  { lat: 40.6599, lon: -73.8819 },  // Head of Fresh Creek
+  'F5':  { lat: 40.6424, lon: -73.8863 },  // Mouth of Fresh Creek
+  'FB1': { lat: 40.7823, lon: -73.8691 },  // Flushing Bay North
+  'FLC1':{ lat: 40.7629, lon: -73.8344 },  // Flushing Creek
+  'FLC2':{ lat: 40.7619, lon: -73.8413 },  // Mouth of Flushing Creek
+  'GB1': { lat: 40.5990, lon: -74.0069 },  // Gravesend Bay
+  'GC3': { lat: 40.6793, lon: -74.0020 },  // Union Street Bridge (Gowanus)
+  'GC4': { lat: 40.6762, lon: -73.9982 },  // Carroll Street Bridge
+  'GC5': { lat: 40.6740, lon: -73.9964 },  // 3rd Street Bridge
+  'GC6': { lat: 40.6721, lon: -73.9946 },  // 9th Street Bridge
+  'HC1': { lat: 40.6499, lon: -73.8650 },  // Hendrix Creek Head
+  'HC2': { lat: 40.6429, lon: -73.8619 },  // Hendrix Creek by 26th Ward
+  'HC3': { lat: 40.6390, lon: -73.8631 },  // Hendrix Creek under Belt Pkwy
+  'HR1': { lat: 40.8524, lon: -73.8310 },  // Bartow Ave Br & Hutchinson River
+  'HR2': { lat: 40.8603, lon: -73.8446 },  // Boston Rd. Br. & Conner Ave
+  'HR03':{ lat: 40.8663, lon: -73.8512 },  // Conner Street Pump Station
+  'LN1': { lat: 40.7901, lon: -73.7240 },  // Little Neck Bay South
+  'NC0': { lat: 40.7021, lon: -73.9127 },  // English Kills
+  'NC1': { lat: 40.7161, lon: -73.9009 },  // Maspeth Creek
+  'NC2': { lat: 40.7139, lon: -73.8973 },  // Amoco Tank Farm
+  'NC3': { lat: 40.7119, lon: -73.8952 },  // Whale Creek
+  'PB2': { lat: 40.6300, lon: -73.9079 },  // Middle of Paerdegat Basin
+  'PB3': { lat: 40.6209, lon: -73.9121 },  // Mouth of Paerdegat Basin
+  'SP1': { lat: 40.6613, lon: -73.8360 },  // Spring Creek Head
+  'SP2': { lat: 40.6472, lon: -73.8381 },  // Spring Creek under Belt Pkwy
+  'TB1': { lat: 40.5940, lon: -73.7742 },  // Thurston Basin
+  'TB2': { lat: 40.5908, lon: -73.7703 },  // Thurston Basin Mouth
+  'TR1': { lat: 40.5779, lon: -73.9770 },  // West 78th St (Triathlon)
+  'TR2': { lat: 40.5739, lon: -73.9789 },  // West 95th St
+  'N3C': { lat: 40.5760, lon: -73.9795 },  // West 88th St
+  'WC1': { lat: 40.8162, lon: -73.8304 },  // WC Bruckner & Cross Bronx Exps
+  'WC2': { lat: 40.8141, lon: -73.8222 },  // South Bound Hutchinson Pkwy
+  'WC3': { lat: 40.8109, lon: -73.8083 },  // Buoy 10
+  // Harlem River
+  'H3':  { lat: 40.8264, lon: -73.9264 },  // E. 155th Street
+};
+
 /* ── Water quality thresholds ───────────────────────────────────────────── */
 const THRESHOLDS = {
   coliform:   { bathing: 200,  fishing: 1000, dir: 'lo' },
@@ -575,14 +674,20 @@ function parseCSV(rows) {
     const site = (row[siteCol] || '').trim();
     if (!site || site.toUpperCase().startsWith('X')) continue;
 
-    // Coordinates — keep trying across rows until found
-    if ((!sites[site] || sites[site].missing) && latCol && lonCol) {
-      const lat = parseFloat(row[latCol]);
-      const lon = parseFloat(row[lonCol]);
-      if (!isNaN(lat) && !isNaN(lon)) {
-        sites[site] = { lat, lon };
+    // Coordinates — hardcoded table first, then CSV lat/lon, then placeholder
+    if (!sites[site] || sites[site].missing) {
+      if (DEP_COORDS[site]) {
+        sites[site] = DEP_COORDS[site];
+      } else if (latCol && lonCol) {
+        const lat = parseFloat(row[latCol]);
+        const lon = parseFloat(row[lonCol]);
+        if (!isNaN(lat) && !isNaN(lon)) {
+          sites[site] = { lat, lon };
+        } else if (!sites[site]) {
+          sites[site] = { missing: true };
+        }
       } else if (!sites[site]) {
-        sites[site] = { missing: true };   // placeholder so we still collect data
+        sites[site] = { missing: true };
       }
     }
 

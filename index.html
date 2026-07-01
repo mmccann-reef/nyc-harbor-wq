@@ -14,6 +14,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-luxon/1.3.1/chartjs-adapter-luxon.umd.min.js"></script>
 
+<!-- PapaParse (CSV parsing) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -309,7 +312,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
     </div>
   </div>
 
-  <div class="hdr-badge">5uug-f49n · NYC Open Data</div>
+  <div style="margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;">
+    <div class="hdr-badge">5uug-f49n · NYC Open Data</div>
+    <div class="hdr-badge" id="downloadDateBadge" style="display:none;">📅 Downloaded: <span id="downloadDateTxt"></span></div>
+  </div>
 </header>
 
 <!-- ══ App body ════════════════════════════════════════════════════════════ -->
@@ -452,21 +458,87 @@ const THRESHOLDS = {
   oxygen:     { state: 5.0,                   dir: 'hi' },
 };
 
+/* ── CSV config ──────────────────────────────────────────────────────────── */
+const CSV_FILE = 'Harbor_Water_Quality_20260701.csv';
+
+// Columns that are NOT water quality parameters
+const CSV_SKIP = new Set([
+  'sampling_location', 'site_name', 'sample_date', 'sample_time',
+  'weather_condition_dry_or_wet', 'sea_state', 'type',
+  'current_speed_knot', 'current_direction_current_direction',
+  'wind_speed_mph', 'wind_direction_wind_direction',
+  'lat', 'long', 'the_geom',
+]);
+
+// Exact label + unit for every known column
+const COL_LABELS = {
+  top_sample_temperature_c:                                      ['Temperature (Surface)',        '°C'],
+  bottom_sample_temperature_c:                                   ['Temperature (Bottom)',         '°C'],
+  site_actual_depth_ft:                                          ['Site Depth',                   'ft'],
+  top_sample_depth_ft:                                           ['Sample Depth (Surface)',       'ft'],
+  bottom_sample_depth_ft:                                        ['Sample Depth (Bottom)',        'ft'],
+  top_salinity_psu:                                              ['Salinity (Surface)',           'ppt'],
+  bottom_salinity_psu:                                           ['Salinity (Bottom)',            'ppt'],
+  top_conductivity_s_m:                                          ['Conductivity (Surface)',       'S/m'],
+  bottom_conductivity_s_m:                                       ['Conductivity (Bottom)',        'S/m'],
+  ctd_conductivity_temperature_depth_profiler_top_dissolved_oxygen_mg_l:
+                                                                 ['DO — CTD (Surface)',          'mg/L'],
+  ctd_conductivity_temperature_depth_profiler_bottom_dissolved_oxygen_mg_l:
+                                                                 ['DO — CTD (Bottom)',           'mg/L'],
+  winkler_method_top_dissolved_oxygen_mg_l:                      ['Dissolved Oxygen (Surface)',  'mg/L'],
+  winkler_method_bottom_dissolved_oxygen_mg_l:                   ['Dissolved Oxygen (Bottom)',   'mg/L'],
+  percentage_o2_saturation_top_sample:                           ['O₂ Saturation (Surface)',     '%'],
+  percentage_o2_saturation_bottom_sample:                        ['O₂ Saturation (Bottom)',      '%'],
+  top_sigma_t_kg_m3:                                             ['Sigma-T (Surface)',           'kg/m³'],
+  bottom_sigma_t_kg_m3:                                          ['Sigma-T (Bottom)',            'kg/m³'],
+  oxidation_reduction_potential_mv_top_sample:                   ['ORP (Surface)',               'mV'],
+  oxidation_reduction_potential_mv_bottom_sample:                ['ORP (Bottom)',                'mV'],
+  secchi_depth_ft:                                               ['Secchi Depth',               'ft'],
+  top_ph:                                                        ['pH (Surface)',                ''],
+  bottom_ph:                                                     ['pH (Bottom)',                 ''],
+  top_fecal_coliform_bacteria_cells_100ml:                       ['Fecal Coliform (Surface)',    'MPN/100mL'],
+  bottom_fecal_coliform_bacteria_cells_100ml:                    ['Fecal Coliform (Bottom)',     'MPN/100mL'],
+  top_enterococci_bacteria_cells_100ml:                          ['Enterococcus (Surface)',      'MPN/100mL'],
+  bottom_enterococci_bacteria_cells_100ml:                       ['Enterococcus (Bottom)',       'MPN/100mL'],
+  top_nitrate_nitrite_mg_l:                                      ['Nitrate+Nitrite (Surface)',   'mg/L'],
+  bottom_nitrate_nitrite_mg_l:                                   ['Nitrate+Nitrite (Bottom)',    'mg/L'],
+  top_ammonium_mg_l:                                             ['Ammonium (Surface)',          'mg/L'],
+  bottom_ammonium_mg_l:                                          ['Ammonium (Bottom)',           'mg/L'],
+  top_ortho_phosphorus_mg_l:                                     ['Ortho-Phosphorus (Surface)',  'mg/L'],
+  bottom_ortho_phosphorus_mg_l:                                  ['Ortho-Phosphorus (Bottom)',   'mg/L'],
+  top_total_kjeldhal_nitrogen_mg_l:                              ['Total Nitrogen (Surface)',    'mg/L'],
+  bottom_total_kjeldhal_nitrogen_mg_l:                           ['Total Nitrogen (Bottom)',     'mg/L'],
+  top_silica_mg_l:                                               ['Silica (Surface)',            'mg/L'],
+  bottom_silica_mg_l:                                            ['Silica (Bottom)',             'mg/L'],
+  total_phosphorus_mg_l:                                         ['Total Phosphorus',            'mg/L'],
+  bottom_total_phosphorus_mg_l:                                  ['Total Phosphorus (Bottom)',   'mg/L'],
+  top_total_suspended_solid_mg_l:                                ['Suspended Solids (Surface)',  'mg/L'],
+  bottom_total_suspended_solid_mg_l:                             ['Suspended Solids (Bottom)',   'mg/L'],
+  top_active_chlorophyll_a_g_l:                                  ['Chlorophyll a (Surface)',     'µg/L'],
+  top_dissolved_organic_carbon_mg_l:                             ['Dissolved Organic Carbon',    'mg/L'],
+};
+
+function colLabel(col) {
+  if (COL_LABELS[col]) return { label: COL_LABELS[col][0], unit: COL_LABELS[col][1] };
+  return { label: col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), unit: '' };
+}
+
 /* ── Init ────────────────────────────────────────────────────────────────── */
 async function init() {
   initMap();
   setDefaultYears();
   bindControls();
+  showDownloadDate();
+  loadCSV();
+}
 
-  try {
-    const r = await fetch('./data.json');
-    if (!r.ok) throw new Error('data.json not found');
-    const raw = await r.json();
-    onDataReady(raw);
-  } catch {
-    txt('Connecting to NYC Open Data API…');
-    await loadFromAPI();
-  }
+function showDownloadDate() {
+  const m = CSV_FILE.match(/(\d{4})(\d{2})(\d{2})/);
+  if (!m) return;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  const formatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  document.getElementById('downloadDateTxt').textContent = formatted;
+  document.getElementById('downloadDateBadge').style.display = 'block';
 }
 
 /* ── Map ─────────────────────────────────────────────────────────────────── */
@@ -478,83 +550,101 @@ function initMap() {
   ).addTo(leafmap);
 }
 
-/* ── API fallback ────────────────────────────────────────────────────────── */
-async function loadFromAPI() {
-  const BASE = 'https://data.cityofnewyork.us/resource/5uug-f49n.json';
-  try {
-    // Schema discovery
-    txt('Discovering schema…');
-    const sample = await fetchJSON(`${BASE}?%24limit=2`);
-    if (!sample?.length) throw new Error('Empty response');
+/* ── CSV loading ─────────────────────────────────────────────────────────── */
+function loadCSV() {
+  txt(`Loading ${CSV_FILE}…`);
 
-    const SKIP = new Set(['site_name','sample_date','the_geom',':id',
-                          ':created_at',':updated_at',':updated_meta',':version']);
-    const paramCols = Object.keys(sample[0]).filter(k => {
-      if (SKIP.has(k)) return false;
-      const v = sample[0][k]; return v !== null && v !== '' && !isNaN(parseFloat(v));
-    });
-
-    // Build synthetic data structure
-    const appData = { metadata: { source: 'live API', generated: today() },
-                      sites: {}, parameters: {}, data: {} };
-    for (const c of paramCols) appData.parameters[c] = guessParam(c);
-
-    // Fetch data in pages
-    let offset = 0, total = 0;
-    const colSel = encodeURIComponent(['site_name','sample_date','the_geom',...paramCols].join(','));
-
-    while (true) {
-      txt(`Loading records… ${total.toLocaleString()}`);
-      const batch = await fetchJSON(
-        `${BASE}?%24select=${colSel}&%24order=sample_date+ASC&%24limit=50000&%24offset=${offset}`
-      );
-      if (!batch?.length) break;
-      ingestBatch(appData, batch, paramCols);
-      total += batch.length; offset += batch.length;
-      if (batch.length < 50000) break;
+  Papa.parse(CSV_FILE, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    step: null,   // parse all at once
+    complete: function(results) {
+      txt('Processing…');
+      setTimeout(() => {          // let the UI update first
+        try {
+          const appData = parseCSV(results.data);
+          onDataReady(appData);
+        } catch(e) {
+          showLoadError(e.message);
+        }
+      }, 20);
+    },
+    error: function(err) {
+      showLoadError(`Could not load ${CSV_FILE}. Make sure it is in the same folder as index.html.`);
     }
-    onDataReady(appData);
-  } catch (e) {
-    document.getElementById('veil').innerHTML =
-      `<div style="text-align:center; padding:32px; color:var(--muted);">
-        <div style="font-size:2.2rem; margin-bottom:12px;">⚠️</div>
-        <div style="font-size:.85rem;">Could not load data.<br>
-        Run <code style="color:var(--accent)">python fetch_data.py</code><br>
-        to generate <code style="color:var(--accent)">data.json</code> first.</div>
-      </div>`;
-  }
+  });
 }
 
-async function fetchJSON(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(r.statusText);
-  return r.json();
-}
+function parseCSV(rows) {
+  if (!rows.length) throw new Error('CSV is empty');
 
-function ingestBatch(appData, rows, paramCols) {
+  const headers = Object.keys(rows[0]);
+
+  // Site name column (try both variants)
+  const siteCol = headers.includes('sampling_location') ? 'sampling_location'
+                : headers.includes('site_name')         ? 'site_name'
+                : null;
+  if (!siteCol) throw new Error('Could not find site name column');
+
+  // Coordinate columns
+  const latCol = headers.includes('lat')      ? 'lat'      : null;
+  const lonCol = headers.includes('long')     ? 'long'
+               : headers.includes('longitude')? 'longitude': null;
+
+  // Parameter columns: numeric, not in skip list
+  const paramCols = headers.filter(h => !CSV_SKIP.has(h) && h !== siteCol);
+
+  const sites = {};
+  const data  = {};
+
   for (const row of rows) {
-    const site = (row.site_name || '').trim();
+    const site = (row[siteCol] || '').trim();
     if (!site) continue;
 
-    if (!appData.sites[site]) {
-      const c = extractCoords(row.the_geom);
-      if (c) appData.sites[site] = c;
+    // Coordinates
+    if (!sites[site] && latCol && lonCol) {
+      const lat = parseFloat(row[latCol]);
+      const lon = parseFloat(row[lonCol]);
+      if (!isNaN(lat) && !isNaN(lon)) sites[site] = { lat, lon };
     }
 
-    const raw = row.sample_date;
+    // Date → timestamp ms
+    const raw = row['sample_date'] || '';
     if (!raw) continue;
     const ts = new Date(raw.split('T')[0]).getTime();
     if (isNaN(ts)) continue;
 
-    if (!appData.data[site]) appData.data[site] = {};
+    if (!data[site]) data[site] = {};
+
     for (const col of paramCols) {
       const v = parseFloat(row[col]);
       if (!isNaN(v)) {
-        if (!appData.data[site][col]) appData.data[site][col] = [];
-        appData.data[site][col].push([ts, v]);
+        if (!data[site][col]) data[site][col] = [];
+        data[site][col].push([ts, v]);
       }
     }
   }
+
+  // Build parameter list — only include cols that actually have data
+  const parameters = {};
+  for (const col of paramCols) {
+    const hasData = Object.values(data).some(s => s[col]?.length);
+    if (hasData) parameters[col] = colLabel(col);
+  }
+
+  return {
+    metadata: { source: CSV_FILE, generated: today(), record_count: rows.length },
+    sites, parameters, data,
+  };
+}
+
+function showLoadError(msg) {
+  document.getElementById('veil').innerHTML =
+    `<div style="text-align:center; padding:32px; color:var(--muted);">
+      <div style="font-size:2.2rem; margin-bottom:12px;">⚠️</div>
+      <div style="font-size:.85rem; line-height:1.7;">${msg}</div>
+    </div>`;
 }
 
 /* ── App setup after data loaded ────────────────────────────────────────── */
@@ -1070,44 +1160,6 @@ function downsample(arr, max) {
   if (arr.length <= max) return arr;
   const step = Math.ceil(arr.length / max);
   return arr.filter((_, i) => i % step === 0);
-}
-
-function extractCoords(geom) {
-  if (!geom) return null;
-  if (typeof geom === 'object' && geom.coordinates)
-    return { lat: +geom.coordinates[1], lon: +geom.coordinates[0] };
-  if (typeof geom === 'string') {
-    try { const o = JSON.parse(geom); if (o.coordinates) return { lat: +o.coordinates[1], lon: +o.coordinates[0] }; } catch {}
-  }
-  return null;
-}
-
-function guessParam(col) {
-  const lo = col.toLowerCase();
-  const map = {
-    'oxygen':'Dissolved Oxygen','coliform':'Fecal Coliform','total_coliform':'Total Coliform',
-    'enterococcus':'Enterococcus','temperature':'Temperature','salinity':'Salinity',
-    'turbidity':'Turbidity','chlorophyll':'Chlorophyll a','secchi':'Secchi Depth','ph':'pH',
-    'ammonia':'Ammonia','nitrate':'Nitrate','nitrogen':'Nitrogen','phosphate':'Phosphate',
-  };
-  const unitMap = {
-    'oxygen':'mg/L','coliform':'MPN/100mL','enterococcus':'MPN/100mL',
-    'temperature':'°C','salinity':'ppt','turbidity':'NTU',
-    'chlorophyll':'µg/L','secchi':'ft','nitrogen':'mg/L','ammonia':'mg/L',
-    'nitrate':'mg/L','phosphate':'mg/L',
-  };
-  let label = col.replace(/_/g,'   ').replace(/\b\w/g, l => l.toUpperCase()).trim();
-  let unit  = '';
-  for (const [k,v] of Object.entries(map)) {
-    if (lo.includes(k)) {
-      const sfx = lo.includes('top')||lo.includes('surf') ? ' (Surface)'
-                : lo.includes('bot')                      ? ' (Bottom)' : '';
-      label = v + sfx;
-      unit  = unitMap[k] || '';
-      break;
-    }
-  }
-  return { label, unit };
 }
 
 function colorScale(param) {

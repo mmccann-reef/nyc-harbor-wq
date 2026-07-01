@@ -573,7 +573,7 @@ function parseCSV(rows) {
 
   for (const row of rows) {
     const site = (row[siteCol] || '').trim();
-    if (!site) continue;
+    if (!site || site.toUpperCase().startsWith('X')) continue;
 
     // Coordinates
     if (!sites[site] && latCol && lonCol) {
@@ -621,28 +621,181 @@ function showLoadError(msg) {
 }
 
 /* ── App setup after data loaded ────────────────────────────────────────── */
-function onDataReady(appData) {
-  S.data = appData;
 
-  // Populate parameter select
+// Parameter groups: each entry is [group label, [...label substrings to match]]
+const PARAM_GROUPS = [
+  ['Dissolved Oxygen', [
+    'winkler method top dissolved oxygen',
+    'winkler method bottom dissolved oxygen',
+    'ctd (conductivity, temperature, depth profiler) top dissolved oxygen',
+    'ctd (conductivity_1, temperature_1, depth profiler) bottom dissolved oxygen',
+    'percentage o2 saturation top',
+    'percentage o2 saturation bottom',
+    'top five-day biochemical oxygen demand',
+    'bottom five-day biochemical oxygen demand',
+    'oakwood bod top',
+    'oakwood bod bottom',
+  ]],
+  ['pH & ORP', [
+    'top ph',
+    'bottom ph',
+    'ctd (conductivity_2, temperature_2, depth profiler) ph top',
+    'ctd (conductivity_3, temperature_3, depth profiler) ph bottom',
+    'oxidation reduction potential (mv) top',
+    'oxidation reduction potential (mv) bottom',
+  ]],
+  ['Temperature', [
+    'top sample temperature',
+    'bottom sample temperature',
+    'top sample temperature  ysi',
+    'bottom sample temperature ysi',
+  ]],
+  ['Salinity & Conductivity', [
+    'top salinity',
+    'bottom salinity',
+    'top sample salinity ysi',
+    'bottom sample salinity ysi',
+    'top conductivity',
+    'bottom conductivity',
+    'top sigma-t',
+    'bottom sigma-t',
+  ]],
+  ['Bacteria — Coliform', [
+    'top fecal coliform bacteria',
+    'bottom fecal coliform bacteria',
+    'top total coliform cells',
+    'top bottom coliform cells',
+    'top coliform',
+    'bottom coliform',
+    'top bacteria # per c.c. 1909',
+    'bottom bacteria # per c.c. 1909',
+  ]],
+  ['Bacteria — Enterococcus', [
+    'top enterococci bacteria',
+    'bottom enterococci bacteria',
+  ]],
+  ['Nutrients — Nitrogen', [
+    'top nitrate/nitrite',
+    'bottom nitrate/nitrite',
+    'top ammonium',
+    'bottom ammonium',
+    'top total kjeldhal nitrogen',
+    'bottom total kjeldhal nitrogen',
+  ]],
+  ['Nutrients — Phosphorus', [
+    'top ortho-phosphorus',
+    'bottom ortho-phosphorus',
+    'total phosphorus',
+    'bottom total phosphorus',
+  ]],
+  ['Nutrients — Carbon & Silica', [
+    'top total organic carbon',
+    'top dissolved organic carbon',
+    'bottom dissolved organic carbon',
+    'top silica',
+    'bottom silica',
+  ]],
+  ['Chlorophyll & Fluorescence', [
+    "top active chlorophyll 'a'",
+    "bottom active chlorophyll 'a'",
+    'chlorophyll top sample field',
+    'chlorophyll bottom sample field',
+    'top fluorometer',
+    'bottom fluorometer',
+  ]],
+  ['Water Clarity & Light', [
+    'secchi depth',
+    'light trans (% transparency) top',
+    'light trans (% transparency) bottom',
+    'top turbidity',
+    'bottom turbidity',
+    'top sample par',
+    'bottom sample par',
+    'top sample photosysthetically active radiation',
+  ]],
+  ['Physical & Depth', [
+    'site actual depth',
+    'top sample depth',
+    'bottom sample depth',
+    'top sample depth  ysi',
+    'top total suspended solid',
+    'bottom total suspended solid',
+  ]],
+  ['Other / Historical', [
+    'top pcb plate count',
+    'bottom pcb plate count',
+  ]],
+];
+
+function populateParamSelect(appData) {
   const sel = document.getElementById('paramSel');
   sel.innerHTML = '';
   addOpt(sel, '', '— Choose parameter —');
-  for (const [id, info] of Object.entries(appData.parameters)) {
-    addOpt(sel, id, info.label + (info.unit ? ` (${info.unit})` : ''));
+
+  const params   = appData.parameters;          // col → {label, unit}
+  const assigned = new Set();
+
+  for (const [groupName, matches] of PARAM_GROUPS) {
+    const groupCols = [];
+
+    for (const match of matches) {
+      // Find the column whose label matches (case-insensitive)
+      const col = Object.entries(params).find(([, info]) =>
+        info.label.toLowerCase() === match.toLowerCase()
+      )?.[0];
+      if (col && !assigned.has(col)) {
+        groupCols.push(col);
+        assigned.add(col);
+      }
+    }
+
+    if (!groupCols.length) continue;
+
+    const grp = document.createElement('optgroup');
+    grp.label = groupName;
+    for (const col of groupCols) {
+      const info = params[col];
+      const opt  = document.createElement('option');
+      opt.value       = col;
+      opt.textContent = info.label + (info.unit ? ` (${info.unit})` : '');
+      grp.appendChild(opt);
+    }
+    sel.appendChild(grp);
   }
 
+  // Catch-all: any parameter not yet assigned goes into a final group
+  const unmatched = Object.entries(params).filter(([col]) => !assigned.has(col));
+  if (unmatched.length) {
+    const grp = document.createElement('optgroup');
+    grp.label = 'Other';
+    for (const [col, info] of unmatched) {
+      const opt = document.createElement('option');
+      opt.value       = col;
+      opt.textContent = info.label + (info.unit ? ` (${info.unit})` : '');
+      grp.appendChild(opt);
+    }
+    sel.appendChild(grp);
+  }
+}
+
+function onDataReady(appData) {
+  S.data = appData;
+
+  // Populate grouped parameter select
+  populateParamSelect(appData);
+
   // Auto-pick a sensible default
-  const prefer = ['Winkler Method Top Dissolved Oxygen',
-                  'Dissolved Oxygen', 'winkler',
-                  'Fecal Coliform', 'Enterococ'];
+  const prefer = ['winkler method top dissolved oxygen',
+                  'dissolved oxygen', 'winkler',
+                  'fecal coliform', 'enterococ'];
   let def = null;
   for (const p of prefer) {
-    const m = Object.keys(appData.parameters).find(k => k.toLowerCase().includes(p.toLowerCase()));
+    const m = Object.keys(appData.parameters).find(k =>
+      appData.parameters[k].label.toLowerCase().includes(p));
     if (m) { def = m; break; }
   }
   if (!def) def = Object.keys(appData.parameters)[0] || null;
-  if (def) { sel.value = def; S.param = def; }
+  if (def) { document.getElementById('paramSel').value = def; S.param = def; }
 
   // Render markers
   buildMarkers();

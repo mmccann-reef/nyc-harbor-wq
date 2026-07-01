@@ -461,66 +461,32 @@ const THRESHOLDS = {
 /* ── CSV config ──────────────────────────────────────────────────────────── */
 const CSV_FILE = 'Harbor_Water_Quality_20260701.csv';
 
-// Columns that are NOT water quality parameters
+// Columns that are NOT water quality parameters (exact header names from CSV)
 const CSV_SKIP = new Set([
-  'sampling_location', 'site_name', 'sample_date', 'sample_time',
-  'weather_condition_dry_or_wet', 'sea_state', 'type',
-  'current_speed_knot', 'current_direction_current_direction',
-  'wind_speed_mph', 'wind_direction_wind_direction',
-  'lat', 'long', 'the_geom',
+  'Sampling Location', 'Duplicate Sample', 'Sample Date', 'Sample Time',
+  'Weather Condition (Dry or Wet)',
+  'Current Speed (knot)', 'Current Direction (Current Direction)',
+  'Wind Speed (mph)', 'Wind Direction (Wind Direction)', 'Sea State',
+  'Fecal Coliform Top Sample Less Than or Greater Than Result',
+  'Fecal Coliform Bottom Sample Less Than or Greater Than Result',
+  'Enterococcus Top Sample Less Than or Greater Than Result',
+  'Enterococcus Bottom Sample Less Than or Greater Than Result',
+  'Sampling Comment', 'Long', 'Lat', 'Type',
 ]);
 
-// Exact label + unit for every known column
-const COL_LABELS = {
-  top_sample_temperature_c:                                      ['Temperature (Surface)',        '°C'],
-  bottom_sample_temperature_c:                                   ['Temperature (Bottom)',         '°C'],
-  site_actual_depth_ft:                                          ['Site Depth',                   'ft'],
-  top_sample_depth_ft:                                           ['Sample Depth (Surface)',       'ft'],
-  bottom_sample_depth_ft:                                        ['Sample Depth (Bottom)',        'ft'],
-  top_salinity_psu:                                              ['Salinity (Surface)',           'ppt'],
-  bottom_salinity_psu:                                           ['Salinity (Bottom)',            'ppt'],
-  top_conductivity_s_m:                                          ['Conductivity (Surface)',       'S/m'],
-  bottom_conductivity_s_m:                                       ['Conductivity (Bottom)',        'S/m'],
-  ctd_conductivity_temperature_depth_profiler_top_dissolved_oxygen_mg_l:
-                                                                 ['DO — CTD (Surface)',          'mg/L'],
-  ctd_conductivity_temperature_depth_profiler_bottom_dissolved_oxygen_mg_l:
-                                                                 ['DO — CTD (Bottom)',           'mg/L'],
-  winkler_method_top_dissolved_oxygen_mg_l:                      ['Dissolved Oxygen (Surface)',  'mg/L'],
-  winkler_method_bottom_dissolved_oxygen_mg_l:                   ['Dissolved Oxygen (Bottom)',   'mg/L'],
-  percentage_o2_saturation_top_sample:                           ['O₂ Saturation (Surface)',     '%'],
-  percentage_o2_saturation_bottom_sample:                        ['O₂ Saturation (Bottom)',      '%'],
-  top_sigma_t_kg_m3:                                             ['Sigma-T (Surface)',           'kg/m³'],
-  bottom_sigma_t_kg_m3:                                          ['Sigma-T (Bottom)',            'kg/m³'],
-  oxidation_reduction_potential_mv_top_sample:                   ['ORP (Surface)',               'mV'],
-  oxidation_reduction_potential_mv_bottom_sample:                ['ORP (Bottom)',                'mV'],
-  secchi_depth_ft:                                               ['Secchi Depth',               'ft'],
-  top_ph:                                                        ['pH (Surface)',                ''],
-  bottom_ph:                                                     ['pH (Bottom)',                 ''],
-  top_fecal_coliform_bacteria_cells_100ml:                       ['Fecal Coliform (Surface)',    'MPN/100mL'],
-  bottom_fecal_coliform_bacteria_cells_100ml:                    ['Fecal Coliform (Bottom)',     'MPN/100mL'],
-  top_enterococci_bacteria_cells_100ml:                          ['Enterococcus (Surface)',      'MPN/100mL'],
-  bottom_enterococci_bacteria_cells_100ml:                       ['Enterococcus (Bottom)',       'MPN/100mL'],
-  top_nitrate_nitrite_mg_l:                                      ['Nitrate+Nitrite (Surface)',   'mg/L'],
-  bottom_nitrate_nitrite_mg_l:                                   ['Nitrate+Nitrite (Bottom)',    'mg/L'],
-  top_ammonium_mg_l:                                             ['Ammonium (Surface)',          'mg/L'],
-  bottom_ammonium_mg_l:                                          ['Ammonium (Bottom)',           'mg/L'],
-  top_ortho_phosphorus_mg_l:                                     ['Ortho-Phosphorus (Surface)',  'mg/L'],
-  bottom_ortho_phosphorus_mg_l:                                  ['Ortho-Phosphorus (Bottom)',   'mg/L'],
-  top_total_kjeldhal_nitrogen_mg_l:                              ['Total Nitrogen (Surface)',    'mg/L'],
-  bottom_total_kjeldhal_nitrogen_mg_l:                           ['Total Nitrogen (Bottom)',     'mg/L'],
-  top_silica_mg_l:                                               ['Silica (Surface)',            'mg/L'],
-  bottom_silica_mg_l:                                            ['Silica (Bottom)',             'mg/L'],
-  total_phosphorus_mg_l:                                         ['Total Phosphorus',            'mg/L'],
-  bottom_total_phosphorus_mg_l:                                  ['Total Phosphorus (Bottom)',   'mg/L'],
-  top_total_suspended_solid_mg_l:                                ['Suspended Solids (Surface)',  'mg/L'],
-  bottom_total_suspended_solid_mg_l:                             ['Suspended Solids (Bottom)',   'mg/L'],
-  top_active_chlorophyll_a_g_l:                                  ['Chlorophyll a (Surface)',     'µg/L'],
-  top_dissolved_organic_carbon_mg_l:                             ['Dissolved Organic Carbon',    'mg/L'],
-};
-
 function colLabel(col) {
-  if (COL_LABELS[col]) return { label: COL_LABELS[col][0], unit: COL_LABELS[col][1] };
-  return { label: col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), unit: '' };
+  // Extract unit from trailing parenthetical e.g. "Temperature (ºC)"
+  const unitMatch = col.match(/\(([^)]+)\)\s*$/);
+  let unit  = '';
+  let label = col;
+  if (unitMatch) {
+    unit  = unitMatch[1].replace(/Â/g, '').replace('u/', 'µ/');
+    label = col.slice(0, col.lastIndexOf(unitMatch[0])).trim();
+  }
+  // Fix common UTF-8 mangling
+  label = label.replace(/Âº/g, '°').replace(/Âµ/g, 'µ').replace(/Â/g, '');
+  unit  = unit.replace(/Âº/g, '°').replace(/Âµ/g, 'µ').replace(/Â/g, '');
+  return { label, unit };
 }
 
 /* ── Init ────────────────────────────────────────────────────────────────── */
@@ -581,19 +547,26 @@ function parseCSV(rows) {
 
   const headers = Object.keys(rows[0]);
 
-  // Site name column (try both variants)
-  const siteCol = headers.includes('sampling_location') ? 'sampling_location'
-                : headers.includes('site_name')         ? 'site_name'
-                : null;
-  if (!siteCol) throw new Error('Could not find site name column');
+  // Site name column
+  const siteCol = headers.find(h => h.trim() === 'Sampling Location')
+               || headers.find(h => h.toLowerCase().includes('sampling location'))
+               || headers.find(h => h.toLowerCase().includes('site_name'))
+               || null;
+  if (!siteCol) throw new Error('Could not find site name column (expected "Sampling Location")');
+
+  // Date column
+  const dateCol = headers.find(h => h.trim() === 'Sample Date')
+               || headers.find(h => h.toLowerCase().includes('sample_date'))
+               || null;
+  if (!dateCol) throw new Error('Could not find date column (expected "Sample Date")');
 
   // Coordinate columns
-  const latCol = headers.includes('lat')      ? 'lat'      : null;
-  const lonCol = headers.includes('long')     ? 'long'
-               : headers.includes('longitude')? 'longitude': null;
+  const latCol = headers.find(h => h.trim() === 'Lat')   || null;
+  const lonCol = headers.find(h => h.trim() === 'Long')  || null;
 
-  // Parameter columns: numeric, not in skip list
-  const paramCols = headers.filter(h => !CSV_SKIP.has(h) && h !== siteCol);
+  // Parameter columns: not in skip list, not site/date/lat/lon
+  const nonParam = new Set([siteCol, dateCol, latCol, lonCol]);
+  const paramCols = headers.filter(h => !CSV_SKIP.has(h.trim()) && !nonParam.has(h));
 
   const sites = {};
   const data  = {};
@@ -610,9 +583,9 @@ function parseCSV(rows) {
     }
 
     // Date → timestamp ms
-    const raw = row['sample_date'] || '';
+    const raw = row[dateCol] || '';
     if (!raw) continue;
-    const ts = new Date(raw.split('T')[0]).getTime();
+    const ts = new Date(raw).getTime();
     if (isNaN(ts)) continue;
 
     if (!data[site]) data[site] = {};
@@ -626,7 +599,7 @@ function parseCSV(rows) {
     }
   }
 
-  // Build parameter list — only include cols that actually have data
+  // Build parameter list — only cols that actually have data
   const parameters = {};
   for (const col of paramCols) {
     const hasData = Object.values(data).some(s => s[col]?.length);
@@ -660,12 +633,12 @@ function onDataReady(appData) {
   }
 
   // Auto-pick a sensible default
-  const prefer = ['dissolved_oxygen','winkler_do','do',
-                  'fecal_coliform','total_coliform','enterococcus'];
+  const prefer = ['Winkler Method Top Dissolved Oxygen',
+                  'Dissolved Oxygen', 'winkler',
+                  'Fecal Coliform', 'Enterococ'];
   let def = null;
   for (const p of prefer) {
-    if (appData.parameters[p]) { def = p; break; }
-    const m = Object.keys(appData.parameters).find(k => k.includes(p));
+    const m = Object.keys(appData.parameters).find(k => k.toLowerCase().includes(p.toLowerCase()));
     if (m) { def = m; break; }
   }
   if (!def) def = Object.keys(appData.parameters)[0] || null;
@@ -1041,17 +1014,17 @@ function qualityBadge(avg, param) {
   if (avg === undefined || avg === null || isNaN(avg)) return '';
   const lo = param?.toLowerCase() || '';
 
-  if (lo.includes('coliform') || lo.includes('fc')) {
+  if (lo.includes('fecal coliform') || lo.includes('total coliform')) {
     if (avg <= 200)  return `<span class="qbadge q-good">✓ Bathing std</span>`;
     if (avg <= 1000) return `<span class="qbadge q-warn">⚠ Exceeds bathing</span>`;
     return `<span class="qbadge q-bad">✗ Poor quality</span>`;
   }
-  if (lo.includes('entero') || lo.includes('ent')) {
+  if (lo.includes('enterococ')) {
     return avg <= 35
       ? `<span class="qbadge q-good">✓ Bathing std</span>`
       : `<span class="qbadge q-bad">✗ Exceeds std</span>`;
   }
-  if (lo.includes('oxygen') || lo === 'do') {
+  if (lo.includes('dissolved oxygen') || lo.includes('winkler')) {
     return avg >= 5.0
       ? `<span class="qbadge q-good">✓ Adequate DO</span>`
       : `<span class="qbadge q-bad">✗ Low DO</span>`;
@@ -1061,11 +1034,11 @@ function qualityBadge(avg, param) {
 
 function getThreshInfo(param) {
   const lo = (param || '').toLowerCase();
-  if (lo.includes('coliform') || lo.includes('fc'))
+  if (lo.includes('fecal coliform') || lo.includes('total coliform'))
     return { 'Bathing (30-day avg)': {val:200, dir:'lo'}, 'Fishing/boating': {val:1000, dir:'lo'} };
-  if (lo.includes('entero') || lo.includes('ent'))
+  if (lo.includes('enterococ'))
     return { 'Bathing standard': {val:35, dir:'lo'} };
-  if (lo.includes('oxygen') || lo === 'do')
+  if (lo.includes('dissolved oxygen') || lo.includes('winkler'))
     return { 'State minimum': {val:5.0, dir:'hi'} };
   return null;
 }
@@ -1164,11 +1137,11 @@ function downsample(arr, max) {
 
 function colorScale(param) {
   const lo = (param || '').toLowerCase();
-  if (lo.includes('oxygen') || lo === 'do')
+  if (lo.includes('dissolved oxygen') || lo.includes('winkler'))
     return ['#d73027','#fc8d59','#fee090','#e0f3f8','#91bfdb','#4575b4'];
-  if (lo.includes('coliform') || lo.includes('entero'))
+  if (lo.includes('coliform') || lo.includes('enterococ'))
     return ['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];
-  if (lo.includes('temp'))
+  if (lo.includes('temperature'))
     return ['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];
   return ['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];
 }

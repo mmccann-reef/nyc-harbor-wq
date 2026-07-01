@@ -644,35 +644,40 @@ function initMap() {
   ).addTo(leafmap);
 }
 
-/* ── Data loading — reads pre-processed data.json ───────────────────────── */
+/* ── Data loading — tiny index on startup, per-site files on demand ─────── */
+const siteCache = {};
+
 function loadCSV() {
-  txt('Loading data.json…');
+  txt('Loading…');
   fetch('data.json')
-    .then(r => {
-      if (!r.ok) throw new Error('data.json not found');
-      return r.json();
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(index => {
+      index.data = {};   // time series loaded per-site on demand
+      document.getElementById('veil').style.display = 'none';
+      onDataReady(index);
     })
-    .then(appData => {
-      // Timestamps stored as days since 1970-01-01 — convert to ms for Chart.js
-      const MS_PER_DAY = 86400000;
-      for (const site of Object.values(appData.data)) {
-        for (const series of Object.values(site)) {
-          for (const pt of series) pt[0] = pt[0] * MS_PER_DAY;
-        }
-      }
-      const bar = document.getElementById('veilBar');
-      if (bar) bar.style.width = '100%';
-      setTimeout(() => onDataReady(appData), 50);
-    })
-    .catch(() => {
-      showLoadError(
-        'Could not load <code style="color:var(--accent)">data.json</code>.<br>' +
-        'Run <code style="color:var(--accent)">process_data.R</code> first to generate it.'
-      );
-    });
+    .catch(() => showLoadError(
+      'Could not load <code style="color:var(--accent)">data.json</code>.<br>' +
+      'Run <code style="color:var(--accent)">process_data.R</code> in RStudio first.'
+    ));
 }
 
-function discoverColumns() {}   // not used with JSON path
+async function fetchSiteData(siteName) {
+  if (siteCache[siteName]) return siteCache[siteName];
+  try {
+    const r = await fetch(`data/${encodeURIComponent(siteName)}.json`);
+    if (!r.ok) return {};
+    const raw = await r.json();
+    // Convert days → milliseconds
+    for (const series of Object.values(raw)) {
+      for (const pt of series) pt[0] = pt[0] * 86400000;
+    }
+    siteCache[siteName] = raw;
+    return raw;
+  } catch { return {}; }
+}
+
+function discoverColumns() {}
 
 function showLoadError(msg) {
   document.getElementById('veil').innerHTML =
@@ -933,14 +938,20 @@ function buildPopup(name) {
 
 function isSelected(name) { return name === S.site1 || name === S.site2; }
 
-/* ── Marker coloring ─────────────────────────────────────────────────────── */
+/* ── Marker coloring — uses pre-computed summaries from index ────────────── */
 function colorMarkers() {
   if (!S.param || !S.data) return;
-  const param = S.data.parameters[S.param];
+  const param     = S.data.parameters[S.param];
+  const summaries = S.data.summaries || {};
 
-  // Collect averages
+  // Use pre-computed averages from the index file
   const avgs = {};
-  for (const [site, cols] of Object.entries(S.data.data)) {
+  for (const [site, sums] of Object.entries(summaries)) {
+    if (sums[S.param] !== undefined) avgs[site] = sums[S.param];
+  }
+  // Also include any site data already loaded into cache
+  for (const [site, cols] of Object.entries(siteCache)) {
+    if (avgs[site] !== undefined) continue;
     const series = cols[S.param];
     if (!series?.length) continue;
     const filt = filterYr(series);
@@ -1010,18 +1021,23 @@ function showView(mode) {
 }
 
 /* ── Single-site rendering ───────────────────────────────────────────────── */
-function renderSingle() {
+async function renderSingle() {
   const name = S.site1;
   const p    = S.param;
   const info = p ? S.data.parameters[p] : null;
   const si   = siteInfo(name);
 
   document.getElementById('sv-name').textContent = name;
-  document.getElementById('sv-meta').innerHTML = si.name
-    ? `<span style="color:var(--text)">${si.name}</span>`
-    : '';
 
-  const series = name && p ? (S.data.data[name]?.[p] || []) : [];
+  // Show loading state
+  document.getElementById('sv-meta').innerHTML =
+    `<span style="color:var(--muted)">Loading…</span>`;
+
+  // Fetch site data (cached after first load)
+  const siteData = await fetchSiteData(name);
+  S.data.data[name] = siteData;   // store so other functions can access
+
+  const series = p ? (siteData[p] || []) : [];
   const filt   = filterYr(series);
   const vals   = filt.map(d => d[1]);
   const st     = stats(vals);
@@ -1044,11 +1060,11 @@ function renderSingle() {
 }
 
 /* ── Compare rendering ───────────────────────────────────────────────────── */
-function renderCompare() {
+async function renderCompare() {
   const p    = S.param;
   const info = p ? S.data.parameters[p] : null;
 
-  function doSide(canvasTs, canvasSea, statsEl, site, color) {
+  async function doSide(canvasTs, canvasSea, statsEl, site, color) {
     if (!site) {
       const canvas = document.getElementById(canvasTs);
       if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
@@ -1056,7 +1072,9 @@ function renderCompare() {
       if (s) s.innerHTML = '<tr><td colspan="2" class="no-data">Select a site</td></tr>';
       return;
     }
-    const series = p ? (S.data.data[site]?.[p] || []) : [];
+    const siteData = await fetchSiteData(site);
+    S.data.data[site] = siteData;
+    const series = p ? (siteData[p] || []) : [];
     const filt   = filterYr(series);
     const st     = stats(filt.map(d => d[1]));
     drawTimeSeries(canvasTs, filt, color, info?.unit);
@@ -1064,8 +1082,10 @@ function renderCompare() {
     fillStats(statsEl, st, info?.unit);
   }
 
-  doSide('c-ts2','c-sea2','cmp-stats1', S.site1, '#00a5cf');
-  doSide('c-ts3','c-sea3','cmp-stats2', S.site2, '#fd7e14');
+  await Promise.all([
+    doSide('c-ts2','c-sea2','cmp-stats1', S.site1, '#00a5cf'),
+    doSide('c-ts3','c-sea3','cmp-stats2', S.site2, '#fd7e14'),
+  ]);
 
   // Overlay
   const ovSec = document.getElementById('overlaySec');

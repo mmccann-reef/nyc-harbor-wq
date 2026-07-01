@@ -242,43 +242,48 @@ parameters <- setNames(
   param_cols
 )
 
-# ── Build data structure: site → column → list of [ts_ms, value] ─────────────
+# ── Build data: per-site files + summary averages for map coloring ────────────
 
 cat("Building data structure...\n")
+dir.create("data", showWarnings = FALSE)
 
-data_out <- list()
+summaries <- list()   # site → param → average value (for map coloring)
 
 for (site in ACTIVE_SITES) {
   site_df <- df %>% filter(.data[[site_col]] == site)
   if (nrow(site_df) == 0) next
-  
-  site_data <- list()
+
+  site_data  <- list()
+  site_avgs  <- list()
+
   for (col in param_cols) {
     vals <- suppressWarnings(as.numeric(site_df[[col]]))
     mask <- !is.na(vals)
-    if (sum(mask) == 0) next
-    
-    ts   <- site_df$ts_days[mask]
-    v    <- round(vals[mask], 2)   # 2 dp is plenty for water quality
+    if (sum(mask) < 3) next
 
-    # Skip if fewer than 3 data points (reduces sparse historical noise)
-    if (length(v) < 3) next
-    
-    # Sort by date
-    ord  <- order(ts)
-    pts  <- mapply(function(t, x) list(t, x), ts[ord], v[ord],
-                   SIMPLIFY = FALSE)
+    ts  <- site_df$ts_days[mask]
+    v   <- round(vals[mask], 2)
+    ord <- order(ts)
+
+    pts <- mapply(function(t, x) list(t, x), ts[ord], v[ord], SIMPLIFY = FALSE)
     site_data[[col]] <- pts
+    site_avgs[[col]] <- round(mean(v), 3)
   }
-  
-  if (length(site_data) > 0) data_out[[site]] <- site_data
+
+  if (length(site_data) == 0) next
+
+  # Write per-site file: data/SITEID.json
+  site_file <- file.path("data", paste0(site, ".json"))
+  write(toJSON(site_data, auto_unbox = TRUE, digits = 4), site_file)
+
+  summaries[[site]] <- site_avgs
 }
 
-cat("  Sites with data:", length(data_out), "\n")
+cat("  Sites with data:", length(summaries), "\n")
 
-# ── Assemble and write JSON ───────────────────────────────────────────────────
+# ── Write main index file (small — no time series) ────────────────────────────
 
-output <- list(
+index <- list(
   metadata   = list(
     generated    = format(Sys.Date(), "%Y-%m-%d"),
     source       = CSV_FILE,
@@ -286,13 +291,18 @@ output <- list(
   ),
   sites      = SITE_META,
   parameters = parameters,
-  data       = data_out
+  summaries  = summaries    # per-site averages for map coloring
 )
 
 cat("Writing", OUT_FILE, "...\n")
-write(toJSON(output, auto_unbox = TRUE, digits = 4), OUT_FILE)
+write(toJSON(index, auto_unbox = TRUE, digits = 4), OUT_FILE)
 
-size_mb <- file.size(OUT_FILE) / 1024^2
-cat(sprintf("Done! %s  (%.1f MB)\n", OUT_FILE, size_mb))
-cat("Sites:", length(data_out), "\n")
-cat("Parameters:", length(parameters), "\n")
+index_kb  <- file.size(OUT_FILE) / 1024
+site_files <- list.files("data", "*.json", full.names = TRUE)
+site_kb    <- sum(file.size(site_files)) / 1024
+
+cat(sprintf("Done!\n"))
+cat(sprintf("  %s:         %.0f KB  (index)\n", OUT_FILE, index_kb))
+cat(sprintf("  data/*.json: %.0f KB  (%.0f KB avg per site)\n",
+            site_kb, site_kb / max(length(site_files), 1)))
+cat(sprintf("  Sites: %d    Parameters: %d\n", length(summaries), length(parameters)))

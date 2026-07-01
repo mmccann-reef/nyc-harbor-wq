@@ -178,16 +178,15 @@ param_cols <- param_cols[sapply(param_cols, function(col) {
 
 cat("  Parameter columns:", length(param_cols), "\n")
 
-# ── Parse dates → millisecond timestamps ─────────────────────────────────────
+# ── Parse dates → days since 1970-01-01 (compact integers, ~5 digits vs 13) ──
 
 df <- df %>%
   mutate(
-    ts_ms = as.numeric(as.POSIXct(
-      as.Date(.data[[date_col]], tryFormats = c("%m/%d/%Y", "%Y-%m-%d", "%d/%m/%Y")),
-      tz = "UTC"
-    )) * 1000
+    ts_days = as.numeric(
+      as.Date(.data[[date_col]], tryFormats = c("%m/%d/%Y", "%Y-%m-%d", "%d/%m/%Y"))
+    )
   ) %>%
-  filter(!is.na(ts_ms))
+  filter(!is.na(ts_days))
 
 # ── Build parameter metadata ──────────────────────────────────────────────────
 
@@ -259,7 +258,7 @@ for (site in ACTIVE_SITES) {
     mask <- !is.na(vals)
     if (sum(mask) == 0) next
     
-    ts   <- site_df$ts_ms[mask]
+    ts   <- site_df$ts_days[mask]
     v    <- round(vals[mask], 2)   # 2 dp is plenty for water quality
 
     # Skip if fewer than 3 data points (reduces sparse historical noise)

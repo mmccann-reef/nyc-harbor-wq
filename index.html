@@ -653,6 +653,13 @@ function loadCSV() {
       return r.json();
     })
     .then(appData => {
+      // Timestamps stored as days since 1970-01-01 — convert to ms for Chart.js
+      const MS_PER_DAY = 86400000;
+      for (const site of Object.values(appData.data)) {
+        for (const series of Object.values(site)) {
+          for (const pt of series) pt[0] = pt[0] * MS_PER_DAY;
+        }
+      }
       const bar = document.getElementById('veilBar');
       if (bar) bar.style.width = '100%';
       setTimeout(() => onDataReady(appData), 50);

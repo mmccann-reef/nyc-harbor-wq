@@ -1,85 +1,85 @@
 code,name,group,latitude,longitude,n_records
-K1,St. George,Staten Island Transect,40.65111,-74.08194,1257
-K2,Shooter Island,Staten Island Transect,40.64117,-74.153,1179
-K3,A & K Railroad Bridge,Staten Island Transect,40.6375,-74.19583,1179
-K4,Fresh Kills,Staten Island Transect,40.567,-74.21167,1184
-K5,Tottenville,Staten Island Transect,40.50883,-74.25883,1171
-K5A,Raritan River,Staten Island Transect,40.4845,-74.24583,949
-K6,Old Orchard Light,Staten Island Transect,40.51033,-74.10083,1140
-AC1,Alley Creek & Northern Blvd,Tributary,40.76317,-73.75175,125
-AC2,Alley Creek Outfall,Tributary,40.7619,-73.75101,125
-BB2,Head of Bergen Basin,Tributary,40.66004,-73.82216,193
-BB4,Mouth of Bergen Basin,Tributary,40.65164,-73.82316,209
-BR1,233rd St & Bronx River,Tributary,40.89314,-73.86271,125
-BR3,Westchester Ave & Bronx River,Tributary,40.82537,-73.8848,125
-BR5,Mouth of Bronx River,Tributary,40.81367,-73.87133,197
-CIC2,Cropsey Ave & Coney Island Creek,Tributary,40.58167,-73.98564,129
-CIC3,Coney Island Creek,Tributary,40.58033,-73.99417,203
-F1,Fresh Creek Outfall,Tributary,40.64315,-73.88413,128
-F5,Mouth of Fresh Creek,Tributary,40.63878,-73.87896,128
-FB1,Flushing Bay North,Tributary,40.7725,-73.85306,287
-FLC1,Flushing Creek,Tributary,40.76217,-73.83667,290
-FLC2,Mouth of Flushing Creek,Tributary,40.765,-73.84283,284
-GB1,Gravesend Bay,Tributary,40.6,-74.01367,217
-GC3,Union Street Bridge,Tributary,40.67943,-73.98824,134
-GC4,Carroll Street Bridge,Tributary,40.67803,-73.98907,133
-GC5,3rd Street Bridge,Tributary,40.67614,-73.99005,133
-GC6,9th Street Bridge,Tributary,40.67417,-73.99639,136
-HC1,Hendrix Creek Head,Tributary,40.65359,-73.87891,119
-HC2,Hendrix at 26th Ward Outfall,Tributary,40.65078,-73.87684,119
-HC3,Hendrix Creek under Belt Pkwy,Tributary,40.64672,-73.87356,137
-HR1,Bartow Av Br & Hutchinson River Pkwy,Tributary,40.8687,-73.8213,132
-HR2,Boston Rd Br & Conner Ave,Tributary,40.88791,-73.82403,132
-HR03,Conner Street Pump Station,Tributary,40.88087,-73.82087,132
-LN1,Little Neck Bay South,Tributary,40.778,-73.76083,247
-NC0,English Kills,Tributary,40.71496,-73.93156,399
-NC0B,Grand Ave & Newtown Creek,Tributary,40.71694,-73.92286,27
-NC1,Maspeth Creek,Tributary,40.72454,-73.92684,398
-NC2,Amoco Tank Farm,Tributary,40.72883,-73.9355,398
-NC3,Whale Creek,Tributary,40.73717,-73.94617,398
-PB2,Middle of Paerdegat Basin,Tributary,40.62801,-73.90967,238
-PB3,Mouth of Paerdegat Basin,Tributary,40.62342,-73.89983,237
-SP1,Spring Creek under Belt Pkwy,Tributary,40.65507,-73.86029,128
-SP2,Spring Creek,Tributary,40.64333,-73.85417,261
-TB1,Thurston Basin,Tributary,40.64233,-73.74733,139
-TB2,Thurston Basin Mouth,Tributary,40.6338,-73.74822,42
-WC1,WC Bruckner & Cross BX Exps,Tributary,40.82775,-73.84228,132
-WC2,South Bound Hutchinson Pkwy,Tributary,40.83888,-73.83984,132
-WC3,"Buoy ""10""",Tributary,40.81507,-73.84319,132
-N1,Mt. St. Vincent,Hudson Transect,40.9145,-73.91617,1340
-N3B,W. 125th Street,Hudson Transect,40.82083,-73.96533,975
-N4,W. 42nd Street,Hudson Transect,40.7645,-74.00583,1328
-N5,Pier A - The Battery,Hudson Transect,40.7045,-74.03,1658
-N6,"Bell Buoy ""31""",Hudson Transect,40.66467,-74.05133,1583
-G2,Gowanus Canal,Hudson Transect,40.66667,-74.00333,555
-N7,"Robbins Reef Buoy ""28""",Hudson Transect,40.64383,-74.05383,2029
-N8,The Narrows,Hudson Transect,40.60617,-74.0455,2002
-N9,Steeplechase Pier,Hudson Transect,40.56833,-73.98333,1177
-N16,Rockaway Point,Hudson Transect,40.52967,-73.94367,955
-E2,E 23rd Street,East River,40.73533,-73.97,1442
-E4,Hell Gate,East River,40.7825,-73.922,1394
-E6,Flushing Bay,East River,40.7855,-73.86083,1243
-E7,Whitestone Bridge,East River,40.805,-73.8205,1371
-E8,Throgs Neck Bridge,East River,40.8005,-73.78367,1459
-E10,Hart Island,East River,40.84367,-73.76533,1235
-E11,Little Neck Bay,East River,40.7875,-73.76333,481
-E12,"Eastchester Bay Buoy N""6""",East River,40.85444,-73.80945,290
-E13,"Westchester Creek Buoy N""2""",East River,40.80611,-73.84111,366
-E14,"Mouth of Bronx River Buoy N""2""",East River,40.80083,-73.8645,558
-E15,"Flushing Bay South Buoy N""2""",East River,40.763,-73.8495,541
-J1,Rockaway Inlet,Jamaica Bay,40.57333,-73.88467,1164
-J2,Mill Basin,Jamaica Bay,40.60806,-73.88584,1122
-J3,Canarsie Pier,Jamaica Bay,40.627,-73.88283,1113
-J5,Railroad Trestle,Jamaica Bay,40.59767,-73.809,1128
-J7,Bergen Basin,Jamaica Bay,40.64533,-73.82083,1072
-J8,Spring Creek,Jamaica Bay,40.64283,-73.85117,569
-J9A,"Fresh Creek Buoy ""C21""",Jamaica Bay,40.63383,-73.87367,502
-J10,Paerdegat Basin,Jamaica Bay,40.62167,-73.89472,485
-J11,Sheepshead Bay,Jamaica Bay,40.58167,-73.93133,564
-J12,Grassy Bay,Jamaica Bay,40.633,-73.80606,322
-JA1,Jamaica WWTP Outfall,Jamaica Bay,40.643,-73.813,158
-N9A,Coney Island Outfall,Jamaica Bay,40.56783,-73.9355,999
-J14,West of Broad Channel,Jamaica Bay Interior,40.60917,-73.82378,131
-J16,Horse Channel,Jamaica Bay Interior,40.61142,-73.84761,131
-J18,Pumpkin Patch,Jamaica Bay Interior,40.6195,-73.84717,87
-H3,E 155th Street,Harlem River,40.828,-73.93383,1931
+K1,"St. George",Staten Island Transect,40.64857,-74.0667,
+K2,"Shooter Island",Staten Island Transect,40.62963,-74.10232,
+K3,"A & K Railroad Bridge",Staten Island Transect,40.62097,-74.12151,
+K4,"Fresh Kills",Staten Island Transect,40.55878,-74.17243,
+K5,"Tottenville",Staten Island Transect,40.50456,-74.22681,
+K5A,"Raritan River",Staten Island Transect,40.48543,-74.2373,
+K6,"Old Orchard Light",Staten Island Transect,40.52793,-74.16179,
+N1,"Mt. St. Vincent",Hudson Transect,40.89323,-73.8354,
+N3B,"W. 125th Street",Hudson Transect,40.80762,-73.91361,
+N4,"W. 42nd Street",Hudson Transect,40.75437,-73.96529,
+N5,"Pier A - The Battery",Hudson Transect,40.70064,-74.01221,
+N6,"Bell Buoy "31"",Hudson Transect,40.6638,-74.04633,
+G2,"Gowanus Canal",Hudson Transect,40.67223,-74.02532,
+N7,"Robbins Reef Buoy "28"",Hudson Transect,40.64617,-74.05996,
+N8,"The Narrows",Hudson Transect,40.61631,-74.07954,
+N9,"Steeplechase Pier",Hudson Transect,40.59378,-74.07749,
+N16,"Rockaway Point",Hudson Transect,40.56731,-74.08518,
+H3,"E 155th Street",Harlem River,40.81893,-73.89558,
+E2,"E 23rd Street",East River,40.73573,-73.96831,
+E4,"Hell Gate",East River,40.78157,-73.92014,
+E6,"Flushing Bay",East River,40.79328,-73.89243,
+E7,"Whitestone Bridge",East River,40.81574,-73.86415,
+E8,"Throgs Neck Bridge",East River,40.81785,-73.85094,
+E10,"Hart Island",East River,40.85625,-73.81737,
+E11,"Little Neck Bay",East River,40.81,-73.8508,
+E12,"Eastchester Bay Buoy N6",East River,40.85883,-73.82852,
+E13,"Westchester Creek Buoy N2",East River,40.81341,-73.87183,
+E14,"Mouth of Bronx River Buoy N2",East River,40.80575,-73.88461,
+E15,"Flushing Bay South Buoy N2",East River,40.77627,-73.90192,
+J1,"Rockaway Inlet",Jamaica Bay,40.61271,-74.03336,
+J2,"Mill Basin",Jamaica Bay,40.64055,-74.01329,
+J3,"Canarsie Pier",Jamaica Bay,40.65832,-73.99927,
+J5,"Railroad Trestle",Jamaica Bay,40.64358,-73.98776,
+J7,"Bergen Basin",Jamaica Bay,40.68186,-73.96309,
+J8,"Spring Creek",Jamaica Bay,40.67575,-73.97642,
+J9A,"Fresh Creek Buoy "C21"",Jamaica Bay,40.66404,-73.99191,
+J10,"Paerdegat Basin",Jamaica Bay,40.65081,-74.00797,
+J11,"Sheepshead Bay",Jamaica Bay,40.61234,-74.04784,
+J12,"Grassy Bay",Jamaica Bay,40.67437,-73.96438,
+JA1,"Jamaica WWTP Outfall",Jamaica Bay,40.68072,-73.96138,
+N9A,"Coney Island Outfall",Jamaica Bay,40.59894,-74.05947,
+J14,"West of Broad Channel",Jamaica Bay Interior,40.65153,-73.98642,
+J16,"Horse Channel",Jamaica Bay Interior,40.64925,-73.99521,
+J18,"Pumpkin Patch",Jamaica Bay Interior,40.65657,-73.9895,
+AC1,"Alley Creek & Northern Blvd",Tributary,40.79225,-73.86111,
+AC2,"Alley Creek Outfall",Tributary,40.79147,-73.86084,
+BB2,"Head of Bergen Basin",Tributary,40.69534,-73.95366,
+BB4,"Mouth of Bergen Basin",Tributary,40.68683,-73.96026,
+BR1,"233rd St & Bronx River",Tributary,40.88247,-73.82747,
+BR3,"Westchester Ave & Bronx River",Tributary,40.82317,-73.87767,
+BR5,"Mouth of Bronx River",Tributary,40.81541,-73.87973,
+CIC2,"Cropsey Ave & Coney Island Creek",Tributary,40.60473,-74.07023,
+CIC3,"Coney Island Creek",Tributary,40.60168,-74.07504,
+F1,"Fresh Creek Outfall",Tributary,40.6712,-73.99029,
+F5,"Mouth of Fresh Creek",Tributary,40.66859,-73.99024,
+FB1,"Flushing Bay North",Tributary,40.78289,-73.89815,
+FLC1,"Flushing Creek",Tributary,40.77656,-73.89745,
+FLC2,"Mouth of Flushing Creek",Tributary,40.77963,-73.89744,
+GB1,"Gravesend Bay",Tributary,40.61505,-74.07081,
+GC3,"Union Street Bridge",Tributary,40.68775,-74.00898,
+GC4,"Carroll Street Bridge",Tributary,40.68508,-74.01153,
+GC5,"3rd Street Bridge",Tributary,40.68153,-74.01529,
+GC6,"9th Street Bridge",Tributary,40.6801,-74.01806,
+HC1,"Hendrix Creek Head",Tributary,40.68147,-73.98126,
+HC2,"Hendrix at 26th Ward Outfall",Tributary,40.67904,-73.98193,
+HC3,"Hendrix Creek under Belt Pkwy",Tributary,40.6766,-73.9826,
+HR1,"Bartow Av Br & Hutchinson River Pkwy",Tributary,40.86912,-73.8243,
+HR2,"Boston Rd Br & Conner Ave",Tributary,40.88532,-73.81343,
+HR03,"Conner Street Pump Station",Tributary,40.87796,-73.81804,
+LN1,"Little Neck Bay South",Tributary,40.80204,-73.85584,
+NC0,"English Kills",Tributary,40.72408,-73.9653,
+NC0B,"Grand Ave & Newtown Creek",Tributary,40.7274,-73.95972,
+NC1,"Maspeth Creek",Tributary,40.73227,-73.95838,
+NC2,"Amoco Tank Farm",Tributary,40.73549,-73.95798,
+NC3,"Whale Creek",Tributary,40.74054,-73.95736,
+PB2,"Middle of Paerdegat Basin",Tributary,40.65415,-74.01089,
+PB3,"Mouth of Paerdegat Basin",Tributary,40.65163,-74.00934,
+SP1,"Spring Creek under Belt Pkwy",Tributary,40.68513,-73.97231,
+SP2,"Spring Creek",Tributary,40.67851,-73.97608,
+TB1,"Thurston Basin",Tributary,40.69105,-73.93384,
+TB2,"Thurston Basin Mouth",Tributary,40.68539,-73.93861,
+WC1,"WC Bruckner & Cross BX Exps",Tributary,40.83003,-73.85981,
+WC2,"South Bound Hutchinson Pkwy",Tributary,40.84227,-73.85016,
+WC3,"Buoy "10"",Tributary,40.82151,-73.8664,

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DEP Map Coordinate Picker</title>
+<style>
+:root {
+  --bg:      #07111f;
+  --surface: #0c1d30;
+  --card:    #0f2236;
+  --border:  #1a3350;
+  --accent:  #00a5cf;
+  --green:   #2dce89;
+  --warn:    #f6c023;
+  --text:    #d8eaf6;
+  --muted:   #527a99;
+  --sans:    'Segoe UI', system-ui, sans-serif;
+  --mono:    'Cascadia Code', 'Consolas', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+             font-family: var(--sans); overflow: hidden; }
+
+.app { display: flex; height: 100vh; }
+
+/* ── Left panel ── */
+.panel {
+  width: 340px; min-width: 340px; flex-shrink: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+.panel-hdr {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.panel-hdr h1 { font-size: .95rem; font-weight: 700; color: #fff; }
+.panel-hdr p  { font-size: .72rem; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+
+/* mode tabs */
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab {
+  flex: 1; padding: 9px 4px; text-align: center; cursor: pointer;
+  font-size: .75rem; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; transition: all .15s;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.panel-body { flex: 1; overflow-y: auto; padding: 10px; }
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* control points */
+.cp-item {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 9px 10px; margin-bottom: 6px;
+  cursor: pointer; transition: border-color .15s;
+}
+.cp-item:hover { border-color: var(--accent); }
+.cp-item.active { border-color: var(--accent); background: rgba(0,165,207,.1); }
+.cp-item.done   { border-color: var(--green); }
+.cp-name { font-size: .8rem; font-weight: 600; color: #fff; }
+.cp-coord { font-size: .68rem; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+.cp-pixel { font-size: .65rem; color: var(--green); font-family: var(--mono); margin-top: 1px; }
+.cp-hint  { font-size: .65rem; color: var(--warn); margin-top: 2px; }
+
+/* station list */
+.st-item {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; margin-bottom: 5px;
+  cursor: pointer; transition: border-color .15s; display: flex; align-items: center; gap: 8px;
+}
+.st-item:hover { border-color: var(--accent); }
+.st-item.active { border-color: var(--accent); background: rgba(0,165,207,.1); }
+.st-item.done   { border-color: var(--green); }
+.st-code { font-size: .82rem; font-weight: 700; color: #fff; min-width: 40px; }
+.st-name { font-size: .7rem; color: var(--muted); flex: 1; }
+.st-coord { font-size: .62rem; color: var(--green); font-family: var(--mono); text-align: right; }
+.st-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--border);
+}
+.st-item.done .st-dot { background: var(--green); }
+.st-item.active .st-dot { background: var(--accent); }
+
+/* export */
+.export-btn {
+  width: 100%; padding: 10px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-size: .85rem; font-weight: 600;
+  cursor: pointer; transition: opacity .15s; margin-top: 4px;
+}
+.export-btn:hover { opacity: .85; }
+.export-btn:disabled { opacity: .4; cursor: default; }
+
+.status-bar {
+  padding: 8px 12px; border-top: 1px solid var(--border);
+  font-size: .72rem; color: var(--muted); font-family: var(--mono);
+  background: var(--card); flex-shrink: 0;
+}
+
+/* ── Canvas area ── */
+.canvas-wrap {
+  flex: 1; position: relative; overflow: hidden; background: #000; cursor: crosshair;
+}
+#imgCanvas { display: block; }
+
+/* Crosshair overlay */
+.crosshair-h, .crosshair-v {
+  position: absolute; background: rgba(0,165,207,.5); pointer-events: none;
+}
+.crosshair-h { height: 1px; left: 0; right: 0; }
+.crosshair-v { width: 1px; top: 0; bottom: 0; }
+
+/* Click markers on canvas */
+.marker {
+  position: absolute; width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid #fff; transform: translate(-50%, -50%);
+  pointer-events: none; display: flex; align-items: center; justify-content: center;
+  font-size: 7px; font-weight: 700; color: #fff;
+}
+.marker.cp  { background: var(--warn); border-color: #fff; }
+.marker.st  { background: var(--accent); border-color: #fff; }
+.marker.st.done { background: var(--green); }
+
+.marker-label {
+  position: absolute; left: 10px; top: -8px;
+  font-size: 9px; font-weight: 700; color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 6px #000;
+  white-space: nowrap; pointer-events: none;
+}
+
+/* Coords readout */
+.coords-readout {
+  position: absolute; bottom: 10px; right: 10px;
+  background: rgba(7,17,31,.85); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 10px; font-family: var(--mono);
+  font-size: .72rem; color: var(--accent); pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* Image upload overlay */
+.upload-overlay {
+  position: absolute; inset: 0; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; background: rgba(7,17,31,.9);
+}
+.upload-btn {
+  padding: 12px 28px; background: var(--accent); color: #fff;
+  border: none; border-radius: 7px; font-size: .9rem; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.upload-btn:hover { opacity: .85; }
+.upload-hint { font-size: .78rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Left panel ── -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <h1>🗺 DEP Map Coordinate Picker</h1>
+      <p>Click landmarks to calibrate, then click each station dot to record its true location.</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab1" onclick="setTab(1)">① Calibrate</div>
+      <div class="tab"        id="tab2" onclick="setTab(2)">② Pick Stations</div>
+      <div class="tab"        id="tab3" onclick="setTab(3)">③ Export</div>
+    </div>
+
+    <!-- Tab 1: Control points -->
+    <div class="panel-body" id="pane1">
+      <p style="font-size:.72rem; color:var(--muted); margin-bottom:8px; line-height:1.6;">
+        Click each landmark below to activate it, then click its location on the map image.
+        You need at least <strong style="color:#fff;">4 points</strong> for accuracy.
+      </p>
+      <div id="cpList"></div>
+      <div id="calibStatus" style="margin-top:8px; font-size:.72rem; color:var(--muted);"></div>
+    </div>
+
+    <!-- Tab 2: Stations -->
+    <div class="panel-body" id="pane2" style="display:none;">
+      <p style="font-size:.72rem; color:var(--muted); margin-bottom:8px; line-height:1.6;">
+        Click a station in the list, then click its dot on the map. Use <kbd style="background:var(--card);padding:1px 5px;border-radius:3px;border:1px solid var(--border);">←→</kbd> to jump between stations.
+      </p>
+      <div id="stList"></div>
+    </div>
+
+    <!-- Tab 3: Export -->
+    <div class="panel-body" id="pane3" style="display:none;">
+      <p style="font-size:.72rem; color:var(--muted); margin-bottom:10px; line-height:1.6;">
+        Export the corrected coordinates as a CSV. Stations you didn't re-pick keep their original coordinates.
+      </p>
+      <div id="exportSummary" style="font-size:.75rem; color:var(--muted); margin-bottom:10px;"></div>
+      <button class="export-btn" id="exportBtn" onclick="exportCSV()">Download corrected_coords.csv</button>
+      <div style="margin-top:12px; font-size:.7rem; color:var(--muted); line-height:1.6;">
+        Drop the exported file into your repo, rename it <code style="color:var(--accent);">Harbor_Survey_Stations_2026_coords.csv</code>, then re-run <code style="color:var(--accent);">process_data.R</code>.
+      </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">Load the DEP map image to begin.</div>
+  </div>
+
+  <!-- ── Canvas area ── -->
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="imgCanvas"></canvas>
+
+    <div class="crosshair-h" id="cH" style="display:none;"></div>
+    <div class="crosshair-v" id="cV" style="display:none;"></div>
+
+    <div class="coords-readout" id="coordsReadout">hover over map</div>
+
+    <div class="upload-overlay" id="uploadOverlay">
+      <div style="font-size:2.5rem;">🗺</div>
+      <div style="font-size:.95rem; color:#fff; font-weight:600;">Load DEP Map Image</div>
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+        Choose Harbor_Survey_Stations_2026.jpg
+      </button>
+      <div class="upload-hint">The image stays on your computer — nothing is uploaded.</div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="loadImage(event)">
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Known control points (landmark → WGS84 coords) ─────────────────────────
+const CONTROL_POINTS = [
+  { id:'gwb',   name:'George Washington Bridge',  lat:40.8517,  lon:-73.9527, px:null, py:null },
+  { id:'vz',    name:'Verrazano-Narrows Bridge',   lat:40.6066,  lon:-74.0444, px:null, py:null },
+  { id:'ws',    name:'Whitestone Bridge',          lat:40.8047,  lon:-73.8333, px:null, py:null },
+  { id:'tn',    name:'Throgs Neck Bridge',         lat:40.8020,  lon:-73.7952, px:null, py:null },
+  { id:'bat',   name:'Battery Park (S tip of Manhattan)', lat:40.7006, lon:-74.0155, px:null, py:null },
+  { id:'jfk',   name:'JFK Airport (center)',       lat:40.6413,  lon:-73.7781, px:null, py:null },
+];
+
+// ── Station list (from authoritative CSV) ───────────────────────────────────
+const STATIONS = [
+  {code:'K1', name:'St. George',                      group:'Staten Island Transect', lat:40.65111, lon:-74.08194},
+  {code:'K2', name:'Shooter Island',                  group:'Staten Island Transect', lat:40.64117, lon:-74.15300},
+  {code:'K3', name:'A & K Railroad Bridge',           group:'Staten Island Transect', lat:40.63750, lon:-74.19583},
+  {code:'K4', name:'Fresh Kills',                     group:'Staten Island Transect', lat:40.56700, lon:-74.21167},
+  {code:'K5', name:'Tottenville',                     group:'Staten Island Transect', lat:40.50883, lon:-74.25883},
+  {code:'K5A',name:'Raritan River',                   group:'Staten Island Transect', lat:40.48450, lon:-74.24583},
+  {code:'K6', name:'Old Orchard Light',               group:'Staten Island Transect', lat:40.51033, lon:-74.10083},
+  {code:'N1', name:'Mt. St. Vincent',                 group:'Hudson Transect',        lat:40.91450, lon:-73.91617},
+  {code:'N3B',name:'W. 125th Street',                 group:'Hudson Transect',        lat:40.82083, lon:-73.96533},
+  {code:'N4', name:'W. 42nd Street',                  group:'Hudson Transect',        lat:40.76450, lon:-74.00583},
+  {code:'N5', name:'Pier A - The Battery',            group:'Hudson Transect',        lat:40.70450, lon:-74.03000},
+  {code:'N6', name:'Bell Buoy "31"',                  group:'Hudson Transect',        lat:40.66467, lon:-74.05133},
+  {code:'G2', name:'Gowanus Canal',                   group:'Hudson Transect',        lat:40.66667, lon:-74.00333},
+  {code:'N7', name:'Robbins Reef Buoy "28"',          group:'Hudson Transect',        lat:40.64383, lon:-74.05383},
+  {code:'N8', name:'The Narrows',                     group:'Hudson Transect',        lat:40.60617, lon:-74.04550},
+  {code:'N9', name:'Steeplechase Pier',               group:'Hudson Transect',        lat:40.56833, lon:-73.98333},
+  {code:'N16',name:'Rockaway Point',                  group:'Hudson Transect',        lat:40.52967, lon:-73.94367},
+  {code:'H3', name:'E 155th Street',                  group:'Harlem River',           lat:40.82800, lon:-73.93383},
+  {code:'E2', name:'E 23rd Street',                   group:'East River',             lat:40.73533, lon:-73.97000},
+  {code:'E4', name:'Hell Gate',                       group:'East River',             lat:40.78250, lon:-73.92200},
+  {code:'E6', name:'Flushing Bay',                    group:'East River',             lat:40.78550, lon:-73.86083},
+  {code:'E7', name:'Whitestone Bridge',               group:'East River',             lat:40.80500, lon:-73.82050},
+  {code:'E8', name:'Throgs Neck Bridge',              group:'East River',             lat:40.80050, lon:-73.78367},
+  {code:'E10',name:'Hart Island',                     group:'East River',             lat:40.84367, lon:-73.76533},
+  {code:'E11',name:'Little Neck Bay',                 group:'East River',             lat:40.78750, lon:-73.76333},
+  {code:'E12',name:'Eastchester Bay Buoy N6',         group:'East River',             lat:40.85444, lon:-73.80945},
+  {code:'E13',name:'Westchester Creek Buoy N2',       group:'East River',             lat:40.80611, lon:-73.84111},
+  {code:'E14',name:'Mouth of Bronx River Buoy N2',   group:'East River',             lat:40.80083, lon:-73.86450},
+  {code:'E15',name:'Flushing Bay South Buoy N2',     group:'East River',             lat:40.76300, lon:-73.84950},
+  {code:'J1', name:'Rockaway Inlet',                  group:'Jamaica Bay',            lat:40.57333, lon:-73.88467},
+  {code:'J2', name:'Mill Basin',                      group:'Jamaica Bay',            lat:40.60806, lon:-73.88584},
+  {code:'J3', name:'Canarsie Pier',                   group:'Jamaica Bay',            lat:40.62700, lon:-73.88283},
+  {code:'J5', name:'Railroad Trestle',                group:'Jamaica Bay',            lat:40.59767, lon:-73.80900},
+  {code:'J7', name:'Bergen Basin',                    group:'Jamaica Bay',            lat:40.64533, lon:-73.82083},
+  {code:'J8', name:'Spring Creek',                    group:'Jamaica Bay',            lat:40.64283, lon:-73.85117},
+  {code:'J9A',name:'Fresh Creek Buoy "C21"',          group:'Jamaica Bay',            lat:40.63383, lon:-73.87367},
+  {code:'J10',name:'Paerdegat Basin',                 group:'Jamaica Bay',            lat:40.62167, lon:-73.89472},
+  {code:'J11',name:'Sheepshead Bay',                  group:'Jamaica Bay',            lat:40.58167, lon:-73.93133},
+  {code:'J12',name:'Grassy Bay',                      group:'Jamaica Bay',            lat:40.63300, lon:-73.80606},
+  {code:'JA1',name:'Jamaica WWTP Outfall',            group:'Jamaica Bay',            lat:40.64300, lon:-73.81300},
+  {code:'N9A',name:'Coney Island Outfall',            group:'Jamaica Bay',            lat:40.56783, lon:-73.93550},
+  {code:'J14',name:'West of Broad Channel',           group:'Jamaica Bay Interior',   lat:40.60917, lon:-73.82378},
+  {code:'J16',name:'Horse Channel',                   group:'Jamaica Bay Interior',   lat:40.61142, lon:-73.84761},
+  {code:'J18',name:'Pumpkin Patch',                   group:'Jamaica Bay Interior',   lat:40.61950, lon:-73.84717},
+  {code:'AC1',name:'Alley Creek & Northern Blvd',     group:'Tributary',              lat:40.76317, lon:-73.75175},
+  {code:'AC2',name:'Alley Creek Outfall',             group:'Tributary',              lat:40.76190, lon:-73.75101},
+  {code:'BB2',name:'Head of Bergen Basin',            group:'Tributary',              lat:40.66004, lon:-73.82216},
+  {code:'BB4',name:'Mouth of Bergen Basin',           group:'Tributary',              lat:40.65164, lon:-73.82316},
+  {code:'BR1',name:'233rd St & Bronx River',          group:'Tributary',              lat:40.89314, lon:-73.86271},
+  {code:'BR3',name:'Westchester Ave & Bronx River',   group:'Tributary',              lat:40.82537, lon:-73.88480},
+  {code:'BR5',name:'Mouth of Bronx River',            group:'Tributary',              lat:40.81367, lon:-73.87133},
+  {code:'CIC2',name:'Cropsey Ave & Coney Island Creek',group:'Tributary',             lat:40.58167, lon:-73.98564},
+  {code:'CIC3',name:'Coney Island Creek',             group:'Tributary',              lat:40.58033, lon:-73.99417},
+  {code:'F1', name:'Fresh Creek Outfall',             group:'Tributary',              lat:40.64315, lon:-73.88413},
+  {code:'F5', name:'Mouth of Fresh Creek',            group:'Tributary',              lat:40.63878, lon:-73.87896},
+  {code:'FB1',name:'Flushing Bay North',              group:'Tributary',              lat:40.77250, lon:-73.85306},
+  {code:'FLC1',name:'Flushing Creek',                 group:'Tributary',              lat:40.76217, lon:-73.83667},
+  {code:'FLC2',name:'Mouth of Flushing Creek',        group:'Tributary',              lat:40.76500, lon:-73.84283},
+  {code:'GB1',name:'Gravesend Bay',                   group:'Tributary',              lat:40.60000, lon:-74.01367},
+  {code:'GC3',name:'Union Street Bridge',             group:'Tributary',              lat:40.67943, lon:-73.98824},
+  {code:'GC4',name:'Carroll Street Bridge',           group:'Tributary',              lat:40.67803, lon:-73.98907},
+  {code:'GC5',name:'3rd Street Bridge',               group:'Tributary',              lat:40.67614, lon:-73.99005},
+  {code:'GC6',name:'9th Street Bridge',               group:'Tributary',              lat:40.67417, lon:-73.99639},
+  {code:'HC1',name:'Hendrix Creek Head',              group:'Tributary',              lat:40.65359, lon:-73.87891},
+  {code:'HC2',name:'Hendrix at 26th Ward Outfall',   group:'Tributary',              lat:40.65078, lon:-73.87684},
+  {code:'HC3',name:'Hendrix Creek under Belt Pkwy',  group:'Tributary',              lat:40.64672, lon:-73.87356},
+  {code:'HR1',name:'Bartow Av Br & Hutchinson River Pkwy',group:'Tributary',         lat:40.86870, lon:-73.82130},
+  {code:'HR2',name:'Boston Rd Br & Conner Ave',      group:'Tributary',              lat:40.88791, lon:-73.82403},
+  {code:'HR03',name:'Conner Street Pump Station',    group:'Tributary',              lat:40.88087, lon:-73.82087},
+  {code:'LN1',name:'Little Neck Bay South',           group:'Tributary',              lat:40.77800, lon:-73.76083},
+  {code:'NC0',name:'English Kills',                   group:'Tributary',              lat:40.71496, lon:-73.93156},
+  {code:'NC0B',name:'Grand Ave & Newtown Creek',      group:'Tributary',              lat:40.71694, lon:-73.92286},
+  {code:'NC1',name:'Maspeth Creek',                   group:'Tributary',              lat:40.72454, lon:-73.92684},
+  {code:'NC2',name:'Amoco Tank Farm',                 group:'Tributary',              lat:40.72883, lon:-73.93550},
+  {code:'NC3',name:'Whale Creek',                     group:'Tributary',              lat:40.73717, lon:-73.94617},
+  {code:'PB2',name:'Middle of Paerdegat Basin',       group:'Tributary',              lat:40.62801, lon:-73.90967},
+  {code:'PB3',name:'Mouth of Paerdegat Basin',        group:'Tributary',              lat:40.62342, lon:-73.89983},
+  {code:'SP1',name:'Spring Creek under Belt Pkwy',   group:'Tributary',              lat:40.65507, lon:-73.86029},
+  {code:'SP2',name:'Spring Creek',                    group:'Tributary',              lat:40.64333, lon:-73.85417},
+  {code:'TB1',name:'Thurston Basin',                  group:'Tributary',              lat:40.64233, lon:-73.74733},
+  {code:'TB2',name:'Thurston Basin Mouth',            group:'Tributary',              lat:40.63380, lon:-73.74822},
+  {code:'WC1',name:'WC Bruckner & Cross BX Exps',    group:'Tributary',              lat:40.82775, lon:-73.84228},
+  {code:'WC2',name:'South Bound Hutchinson Pkwy',     group:'Tributary',              lat:40.83888, lon:-73.83984},
+  {code:'WC3',name:'Buoy "10"',                       group:'Tributary',              lat:40.81507, lon:-73.84319},
+];
+
+// ── App state ────────────────────────────────────────────────────────────────
+let img = null;
+let scale = 1, offsetX = 0, offsetY = 0;
+let activeTab = 1;
+let activeCpIdx = -1;
+let activeStIdx = -1;
+let transform = null;
+let stationResults = {}; // code → {lat, lon}
+
+const canvas  = document.getElementById('imgCanvas');
+const ctx     = canvas.getContext('2d');
+const wrap    = document.getElementById('canvasWrap');
+
+// ── Image loading ─────────────────────────────────────────────────────────────
+function loadImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img = new Image();
+    img.onload = () => {
+      document.getElementById('uploadOverlay').style.display = 'none';
+      fitImage();
+      renderCanvas();
+      buildCpList();
+      buildStList();
+      setStatus('Image loaded. Switch to ① Calibrate and click 4+ landmarks.');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function fitImage() {
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  scale = Math.min(W / img.naturalWidth, H / img.naturalHeight);
+  offsetX = (W - img.naturalWidth * scale) / 2;
+  offsetY = (H - img.naturalHeight * scale) / 2;
+  canvas.width  = W;
+  canvas.height = H;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function renderCanvas() {
+  if (!img) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, offsetX, offsetY, img.naturalWidth * scale, img.naturalHeight * scale);
+
+  // Draw calibration points
+  CONTROL_POINTS.forEach((cp, i) => {
+    if (cp.px === null) return;
+    const cx = cp.px * scale + offsetX;
+    const cy = cp.py * scale + offsetY;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#f6c023';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, cx, cy);
+  });
+
+  // Draw station picks
+  STATIONS.forEach(st => {
+    const r = stationResults[st.code];
+    if (!r?._px) return;
+    const cx = r._px * scale + offsetX;
+    const cy = r._py * scale + offsetY;
+    const isActive = STATIONS[activeStIdx]?.code === st.code;
+    ctx.beginPath();
+    ctx.arc(cx, cy, isActive ? 8 : 6, 0, Math.PI * 2);
+    ctx.fillStyle = isActive ? '#00a5cf' : '#2dce89';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(st.code, cx, cy - 11);
+  });
+}
+
+// ── Mouse events ─────────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+
+  // Crosshairs
+  document.getElementById('cH').style.cssText = `display:block; top:${cy}px;`;
+  document.getElementById('cV').style.cssText = `display:block; left:${cx}px;`;
+
+  // Coords readout
+  if (transform) {
+    const px = (cx - offsetX) / scale;
+    const py = (cy - offsetY) / scale;
+    const geo = pixelToGeo(px, py);
+    document.getElementById('coordsReadout').textContent =
+      `${geo.lat.toFixed(5)}°N, ${geo.lon.toFixed(5)}°W`;
+  } else {
+    document.getElementById('coordsReadout').textContent =
+      `pixel (${Math.round((cx - offsetX) / scale)}, ${Math.round((cy - offsetY) / scale)})`;
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('cH').style.display = 'none';
+  document.getElementById('cV').style.display = 'none';
+});
+
+canvas.addEventListener('click', e => {
+  if (!img) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const px = (cx - offsetX) / scale;
+  const py = (cy - offsetY) / scale;
+
+  if (activeTab === 1 && activeCpIdx >= 0) {
+    // Set control point pixel
+    CONTROL_POINTS[activeCpIdx].px = px;
+    CONTROL_POINTS[activeCpIdx].py = py;
+    recomputeTransform();
+    buildCpList();
+    renderCanvas();
+    // Auto-advance
+    const next = CONTROL_POINTS.findIndex((cp, i) => i > activeCpIdx && cp.px === null);
+    if (next >= 0) setActiveCp(next);
+    else { activeCpIdx = -1; updateCpList(); }
+
+  } else if (activeTab === 2 && activeStIdx >= 0) {
+    // Set station pixel → compute geo
+    const st = STATIONS[activeStIdx];
+    if (!transform) { setStatus('⚠ Calibrate at least 3 points first!'); return; }
+    const geo = pixelToGeo(px, py);
+    stationResults[st.code] = {
+      lat: +geo.lat.toFixed(5), lon: +geo.lon.toFixed(5),
+      _px: px, _py: py,
+    };
+    buildStList();
+    renderCanvas();
+    // Auto-advance
+    const next = STATIONS.findIndex((s, i) => i > activeStIdx && !stationResults[s.code]);
+    if (next >= 0) setActiveSt(next);
+    else { activeStIdx = -1; updateStList(); setStatus(`✓ All stations picked! Go to ③ Export.`); }
+  }
+});
+
+// Keyboard navigation for stations
+document.addEventListener('keydown', e => {
+  if (activeTab !== 2) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    setActiveSt(Math.min(STATIONS.length - 1, activeStIdx + 1));
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    setActiveSt(Math.max(0, activeStIdx - 1));
+  }
+});
+
+// ── Affine transform (pixel → geo) ──────────────────────────────────────────
+function recomputeTransform() {
+  const pts = CONTROL_POINTS.filter(cp => cp.px !== null);
+  if (pts.length < 3) { transform = null; return; }
+
+  // Solve: lat = a0 + a1*px + a2*py (and same for lon)
+  const A   = pts.map(p => [1, p.px, p.py]);
+  const bLat = pts.map(p => p.lat);
+  const bLon = pts.map(p => p.lon);
+
+  transform = {
+    lat: leastSquares(A, bLat),
+    lon: leastSquares(A, bLon),
+    n:   pts.length,
+  };
+
+  // Compute residuals
+  let sumErr = 0;
+  pts.forEach(p => {
+    const g = pixelToGeo(p.px, p.py);
+    const dLat = (g.lat - p.lat) * 111000;
+    const dLon = (g.lon - p.lon) * 111000 * Math.cos(p.lat * Math.PI / 180);
+    sumErr += Math.sqrt(dLat*dLat + dLon*dLon);
+  });
+  const rms = (sumErr / pts.length).toFixed(0);
+
+  document.getElementById('calibStatus').innerHTML =
+    `<span style="color:var(--green)">✓ Calibrated with ${pts.length} points — est. error ~${rms}m RMS</span>`;
+}
+
+function pixelToGeo(px, py) {
+  if (!transform) return { lat: 0, lon: 0 };
+  const c = transform;
+  return {
+    lat: c.lat[0] + c.lat[1]*px + c.lat[2]*py,
+    lon: c.lon[0] + c.lon[1]*px + c.lon[2]*py,
+  };
+}
+
+function leastSquares(A, b) {
+  // Normal equations for 3-col design matrix → 3 coefficients
+  const n = A.length, m = 3;
+  const ATA = [[0,0,0],[0,0,0],[0,0,0]];
+  const ATb = [0, 0, 0];
+  for (let k = 0; k < n; k++) {
+    for (let i = 0; i < m; i++) {
+      ATb[i] += A[k][i] * b[k];
+      for (let j = 0; j < m; j++) ATA[i][j] += A[k][i] * A[k][j];
+    }
+  }
+  return gaussElim(ATA, ATb);
+}
+
+function gaussElim(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col+1; row < n; row++) {
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    }
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    for (let row = col+1; row < n; row++) {
+      const factor = M[row][col] / M[col][col];
+      for (let j = col; j <= n; j++) M[row][j] -= factor * M[col][j];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n-1; i >= 0; i--) {
+    x[i] = M[i][n] / M[i][i];
+    for (let k = i-1; k >= 0; k--) M[k][n] -= M[k][i] * x[i];
+  }
+  return x;
+}
+
+// ── UI builders ──────────────────────────────────────────────────────────────
+function buildCpList() {
+  const el = document.getElementById('cpList');
+  el.innerHTML = CONTROL_POINTS.map((cp, i) => {
+    const done   = cp.px !== null;
+    const active = i === activeCpIdx;
+    return `<div class="cp-item ${done?'done':''} ${active?'active':''}" onclick="setActiveCp(${i})">
+      <div class="cp-name"><span style="color:var(--warn); margin-right:6px;">${i+1}</span>${cp.name}</div>
+      <div class="cp-coord">${cp.lat.toFixed(4)}°N, ${cp.lon.toFixed(4)}°W</div>
+      ${done
+        ? `<div class="cp-pixel">✓ pixel (${Math.round(cp.px)}, ${Math.round(cp.py)})</div>`
+        : `<div class="cp-hint">← click to activate, then click on map</div>`}
+    </div>`;
+  }).join('');
+}
+
+function setActiveCp(i) {
+  activeCpIdx = i;
+  buildCpList();
+  setStatus(`Click the location of "${CONTROL_POINTS[i].name}" on the map image.`);
+}
+
+function updateCpList() { buildCpList(); }
+
+function buildStList() {
+  const el = document.getElementById('stList');
+  const done = Object.keys(stationResults).length;
+  el.innerHTML = STATIONS.map((st, i) => {
+    const r      = stationResults[st.code];
+    const isDone = !!r;
+    const isAct  = i === activeStIdx;
+    return `<div class="st-item ${isDone?'done':''} ${isAct?'active':''}" onclick="setActiveSt(${i})">
+      <div class="st-dot"></div>
+      <div class="st-code">${st.code}</div>
+      <div class="st-name">${st.name}</div>
+      ${isDone
+        ? `<div class="st-coord">${r.lat.toFixed(4)}<br>${r.lon.toFixed(4)}</div>`
+        : `<div class="st-coord" style="color:var(--muted)">—</div>`}
+    </div>`;
+  }).join('');
+
+  // Scroll active into view
+  if (isAct => activeStIdx >= 0) {
+    setTimeout(() => {
+      const items = el.querySelectorAll('.st-item');
+      items[activeStIdx]?.scrollIntoView({ block:'nearest', behavior:'smooth' });
+    }, 50);
+  }
+
+  // Update export summary
+  document.getElementById('exportSummary').textContent =
+    `${done} of ${STATIONS.length} stations re-picked. The rest keep original coordinates.`;
+}
+
+function setActiveSt(i) {
+  activeStIdx = i;
+  buildStList();
+  const st = STATIONS[i];
+  setStatus(`[${i+1}/${STATIONS.length}] Click location of ${st.code} — ${st.name}`);
+  renderCanvas();
+}
+
+function updateStList() { buildStList(); }
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function setTab(n) {
+  activeTab = n;
+  [1,2,3].forEach(i => {
+    document.getElementById(`tab${i}`).classList.toggle('active', i === n);
+    document.getElementById(`pane${i}`).style.display = i === n ? '' : 'none';
+  });
+  if (n === 2 && activeStIdx < 0) setActiveSt(0);
+}
+
+// ── Export ───────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const rows = ['code,name,group,latitude,longitude,n_records'];
+  STATIONS.forEach(st => {
+    const r = stationResults[st.code];
+    const lat = r ? r.lat : st.lat;
+    const lon = r ? r.lon : st.lon;
+    rows.push(`${st.code},"${st.name}",${st.group},${lat},${lon},`);
+  });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'corrected_coords.csv';
+  a.click();
+}
+
+function setStatus(msg) {
+  document.getElementById('statusBar').textContent = msg;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+buildCpList();
+buildStList();
+setActiveCp(0);
+
+window.addEventListener('resize', () => { if (img) { fitImage(); renderCanvas(); } });
+</script>
+</body>
+</html>

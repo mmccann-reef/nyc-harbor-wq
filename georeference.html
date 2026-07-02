@@ -174,8 +174,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
     <!-- Tab 1: Control points -->
     <div class="panel-body" id="pane1">
       <p style="font-size:.72rem; color:var(--muted); margin-bottom:8px; line-height:1.6;">
-        Click each landmark below to activate it, then click its location on the map image.
-        You need at least <strong style="color:#fff;">4 points</strong> for accuracy.
+        Click each station below to activate it, then click the <strong style="color:#fff;">center of that station's dot</strong> on the DEP map image. These are open-water stations with reliable coordinates, spread across the map for good coverage. More points = better accuracy.
       </p>
       <div id="cpList"></div>
       <div id="calibStatus" style="margin-top:8px; font-size:.72rem; color:var(--muted);"></div>
@@ -227,14 +226,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 </div>
 
 <script>
-// ── Known control points (landmark → WGS84 coords) ─────────────────────────
+// ── Known control points — use open-water station dots on the DEP map ────────
+// These stations have reliable GPS coordinates and are small precise points.
+// Click the CENTER of each dot as it appears on the DEP map image.
 const CONTROL_POINTS = [
-  { id:'gwb',   name:'George Washington Bridge',  lat:40.8517,  lon:-73.9527, px:null, py:null },
-  { id:'vz',    name:'Verrazano-Narrows Bridge',   lat:40.6066,  lon:-74.0444, px:null, py:null },
-  { id:'ws',    name:'Whitestone Bridge',          lat:40.8047,  lon:-73.8333, px:null, py:null },
-  { id:'tn',    name:'Throgs Neck Bridge',         lat:40.8020,  lon:-73.7952, px:null, py:null },
-  { id:'bat',   name:'Battery Park (S tip of Manhattan)', lat:40.7006, lon:-74.0155, px:null, py:null },
-  { id:'jfk',   name:'JFK Airport (center)',       lat:40.6413,  lon:-73.7781, px:null, py:null },
+  { id:'N1',  name:'N1 — Mt. St. Vincent (Hudson R, top of map)',    lat:40.91450, lon:-73.91617, px:null, py:null },
+  { id:'K5',  name:'K5 — Tottenville (Staten Island, bottom left)',  lat:40.50883, lon:-74.25883, px:null, py:null },
+  { id:'E10', name:'E10 — Hart Island (Long Island Sound, top right)',lat:40.84367, lon:-73.76533, px:null, py:null },
+  { id:'N16', name:'N16 — Rockaway Point (bottom center)',            lat:40.52967, lon:-73.94367, px:null, py:null },
+  { id:'E11', name:'E11 — Little Neck Bay (far right)',               lat:40.78750, lon:-73.76333, px:null, py:null },
+  { id:'K4',  name:'K4 — Fresh Kills (Staten Island, left side)',    lat:40.56700, lon:-74.21167, px:null, py:null },
+  { id:'N8',  name:'N8 — The Narrows (center bottom)',                lat:40.60617, lon:-74.04550, px:null, py:null },
+  { id:'N5',  name:'N5 — Pier A / The Battery (S tip Manhattan)',    lat:40.70450, lon:-74.03000, px:null, py:null },
+  { id:'BR1', name:'BR1 — 233rd St & Bronx River (top, Bronx)',      lat:40.89314, lon:-73.86271, px:null, py:null },
+  { id:'K6',  name:'K6 — Old Orchard Light (Lower Bay)',             lat:40.51033, lon:-74.10083, px:null, py:null },
 ];
 
 // ── Station list (from authoritative CSV) ───────────────────────────────────

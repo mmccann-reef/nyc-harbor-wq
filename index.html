@@ -5,64 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NYC Harbor Water Quality</title>
 
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
-<!-- Chart.js + Luxon adapter (time scale) -->
+<!-- Chart.js + Luxon adapter -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-luxon/1.3.1/chartjs-adapter-luxon.umd.min.js"></script>
-
-<!-- PapaParse (CSV parsing) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-/* ── Palette ─────────────────────────────────────────────────── */
 :root {
-  --bg:        #07111f;
-  --surface:   #0c1d30;
-  --card:      #0f2236;
-  --border:    #1a3350;
-  --accent:    #00a5cf;
-  --accent2:   #fd7e14;
-  --text:      #d8eaf6;
-  --muted:     #527a99;
-  --good:      #2dce89;
-  --warn:      #f6c023;
-  --bad:       #e05c3a;
-  --mono:      'IBM Plex Mono', monospace;
-  --sans:      'Space Grotesk', system-ui, sans-serif;
+  --bg:      #07111f;
+  --surface: #0c1d30;
+  --card:    #0f2236;
+  --border:  #1a3350;
+  --accent:  #00a5cf;
+  --accent2: #fd7e14;
+  --text:    #d8eaf6;
+  --muted:   #527a99;
+  --good:    #2dce89;
+  --warn:    #f6c023;
+  --bad:     #e05c3a;
+  --mono:    'IBM Plex Mono', monospace;
+  --sans:    'Space Grotesk', system-ui, sans-serif;
 }
-
-/* ── Reset ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text);
              font-family: var(--sans); overflow: hidden; }
 
-/* ── Header ──────────────────────────────────────────────────── */
+/* ── Header ── */
 .hdr {
-  display: flex; align-items: center; gap: 18px;
-  padding: 0 18px;
-  height: 54px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  z-index: 1000; position: relative;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 18px; padding: 0 18px;
+  height: 54px; background: var(--surface); border-bottom: 1px solid var(--border);
+  z-index: 100; position: relative; flex-shrink: 0;
 }
 .hdr-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .hdr-brand svg { width: 28px; height: 28px; }
 .hdr-title { font-size: 1rem; font-weight: 700; color: #fff; line-height: 1.1; }
 .hdr-sub   { font-size: 0.65rem; color: var(--muted); letter-spacing: .04em; }
 .hdr-div   { width: 1px; height: 30px; background: var(--border); flex-shrink: 0; }
-
 .ctrl { display: flex; flex-direction: column; gap: 2px; }
-.ctrl-lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: .07em;
-            color: var(--muted); }
+.ctrl-lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
 .ctrl select, .ctrl input[type=number] {
   background: var(--bg); color: var(--text); border: 1px solid var(--border);
   font-family: var(--sans); font-size: 0.78rem; padding: 4px 7px;
@@ -71,209 +55,147 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .ctrl select:focus, .ctrl input:focus { border-color: var(--accent); }
 .ctrl select { min-width: 210px; }
 .ctrl input[type=number] { width: 64px; text-align: center; }
-
-.yr-row { display: flex; align-items: center; gap: 5px; }
-.yr-sep { color: var(--muted); font-size: 0.75rem; }
-
-/* compare toggle */
+.yr-row { display: flex; align-items: center; gap: 5px; font-size: .85rem; }
+.yr-sep { color: var(--muted); }
 .tog-wrap { display: flex; align-items: center; gap: 8px; }
 .tog { position: relative; width: 38px; height: 22px; cursor: pointer; }
 .tog input { opacity: 0; width: 0; height: 0; }
-.tog-slider {
-  position: absolute; inset: 0; background: var(--border);
-  border-radius: 11px; transition: background .2s;
-}
-.tog-slider::before {
-  content: ''; position: absolute; width: 16px; height: 16px;
-  left: 3px; top: 3px; background: #fff; border-radius: 50%;
-  transition: transform .2s;
-}
+.tog-slider { position: absolute; inset: 0; background: var(--border); border-radius: 11px; transition: background .2s; }
+.tog-slider::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .2s; }
 .tog input:checked + .tog-slider { background: var(--accent); }
 .tog input:checked + .tog-slider::before { transform: translateX(16px); }
-.tog-lbl { font-size: 0.78rem; color: var(--muted); }
+.tog-lbl { font-size: .78rem; color: var(--muted); }
+.hdr-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.hdr-badge { font-size: .65rem; color: var(--muted); font-family: var(--mono);
+  background: rgba(0,165,207,.08); padding: 2px 9px; border-radius: 10px;
+  border: 1px solid rgba(0,165,207,.18); white-space: nowrap; }
+.calib-btn { font-size: .65rem; color: var(--warn); background: none; border: 1px solid var(--warn);
+  padding: 2px 9px; border-radius: 10px; cursor: pointer; font-family: var(--sans);
+  transition: background .15s; white-space: nowrap; }
+.calib-btn:hover { background: rgba(246,192,35,.1); }
 
-.hdr-badge {
-  margin-left: auto; font-size: 0.65rem; color: var(--muted);
-  font-family: var(--mono); white-space: nowrap; flex-shrink: 0;
-  background: rgba(0,165,207,.08); padding: 3px 9px; border-radius: 10px;
-  border: 1px solid rgba(0,165,207,.18);
-}
-
-/* ── Main layout ────────────────────────────────────────────── */
+/* ── Main layout ── */
 .app { display: flex; height: calc(100vh - 54px); }
 
-/* ── Map panel ──────────────────────────────────────────────── */
-.map-wrap { flex: 1; position: relative; min-width: 0; }
-#map { width: 100%; height: 100%; }
-
-/* Map legend */
-.legend {
-  position: absolute; bottom: 28px; left: 10px; z-index: 1000;
-  background: rgba(7,17,31,.88); border: 1px solid var(--border);
-  border-radius: 7px; padding: 9px 13px; backdrop-filter: blur(6px);
+/* ── Map / image area ── */
+.map-wrap {
+  flex: 1; position: relative; overflow: hidden;
+  background: #e8eef4; cursor: crosshair;
 }
-.legend-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: .07em;
-                color: var(--muted); margin-bottom: 5px; }
-.legend-bar { height: 7px; width: 160px; border-radius: 3px; margin-bottom: 3px; }
-.legend-ends { display: flex; justify-content: space-between;
-               font-size: 0.65rem; font-family: var(--mono); color: var(--muted); }
+#depImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; pointer-events: none; }
+#mapCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-/* Loading veil */
-.loading-veil {
-  position: absolute; inset: 0; z-index: 2000;
+/* Calibration overlay */
+.calib-overlay {
+  position: absolute; inset: 0; z-index: 50;
   background: rgba(7,17,31,.82); display: flex;
   flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; backdrop-filter: blur(3px);
 }
-.spin {
-  width: 36px; height: 36px; border-radius: 50%;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  animation: spin .8s linear infinite;
+.calib-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 22px 28px; max-width: 420px; width: 90%;
+  text-align: center;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-txt { font-size: 0.8rem; color: var(--muted); font-family: var(--mono); }
+.calib-card h2 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.calib-card p  { font-size: .78rem; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+.calib-station {
+  background: var(--card); border: 1px solid var(--accent);
+  border-radius: 7px; padding: 12px 16px; margin-bottom: 14px;
+}
+.calib-station .code { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+.calib-station .name { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+.calib-progress { font-size: .72rem; color: var(--muted); font-family: var(--mono); margin-bottom: 4px; }
+.calib-hint { font-size: .72rem; color: var(--warn); margin-top: 4px; }
+.calib-skip { font-size: .68rem; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.calib-skip:hover { color: var(--text); }
 
-/* ── Analysis panel ─────────────────────────────────────────── */
+/* Tooltip on map */
+.map-tooltip {
+  position: absolute; z-index: 40; background: rgba(12,29,48,.92);
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px;
+  font-size: .75rem; pointer-events: none; white-space: nowrap;
+  backdrop-filter: blur(4px); transition: opacity .1s;
+}
+.map-tooltip .tt-code { font-weight: 700; color: #fff; }
+.map-tooltip .tt-name { color: var(--muted); font-size: .68rem; }
+.map-tooltip .tt-val  { color: var(--accent); font-family: var(--mono); font-size: .7rem; margin-top: 2px; }
+.map-tooltip .tt-hint { color: var(--muted); font-size: .65rem; margin-top: 3px; font-style: italic; }
+
+/* Legend */
+.legend {
+  position: absolute; bottom: 12px; left: 12px; z-index: 30;
+  background: rgba(12,29,48,.9); border: 1px solid var(--border);
+  border-radius: 7px; padding: 9px 13px; backdrop-filter: blur(6px);
+}
+.legend-title { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em;
+                color: var(--muted); margin-bottom: 5px; }
+.legend-bar { height: 7px; width: 160px; border-radius: 3px; margin-bottom: 3px; }
+.legend-ends { display: flex; justify-content: space-between;
+               font-size: .65rem; font-family: var(--mono); color: var(--muted); }
+.legend-types { display: flex; gap: 12px; margin-top: 8px; padding-top: 8px;
+                border-top: 1px solid var(--border); font-size: .65rem; color: var(--muted); }
+.legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+              margin-right: 4px; vertical-align: middle; }
+
+/* ── Side panel (unchanged from original) ── */
 .side {
   width: 440px; min-width: 440px; flex-shrink: 0;
   background: var(--surface); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-  transition: width .25s;
+  display: flex; flex-direction: column; overflow: hidden; transition: width .25s;
 }
 .side.cmp { width: 720px; min-width: 720px; }
-
-/* Empty state */
-.empty {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  text-align: center; padding: 40px;
-}
+.empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; }
 .empty-icon { font-size: 2.8rem; margin-bottom: 14px; opacity: .45; }
 .empty h3 { font-size: 1rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
-.empty p  { font-size: 0.78rem; color: var(--muted); line-height: 1.6; max-width: 240px; }
-.empty-hint { margin-top: 18px; font-size: 0.7rem; font-family: var(--mono);
-              color: rgba(0,165,207,.7); }
-
-/* Site header bar */
-.site-hdr {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
-  flex-shrink: 0;
-}
-.site-name { font-size: 0.95rem; font-weight: 700; color: #fff; }
-.site-meta { font-size: 0.68rem; color: var(--muted); margin-top: 1px; font-family: var(--mono); }
+.empty p  { font-size: .78rem; color: var(--muted); line-height: 1.6; max-width: 240px; }
+.empty-hint { margin-top: 18px; font-size: .7rem; font-family: var(--mono); color: rgba(0,165,207,.7); }
+.site-hdr { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--card); flex-shrink: 0; }
+.site-name { font-size: .95rem; font-weight: 700; color: #fff; }
+.site-meta { font-size: .68rem; color: var(--muted); margin-top: 1px; font-family: var(--mono); }
 .site-row  { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-
-/* Quality badge */
-.qbadge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.65rem; font-weight: 600; padding: 2px 8px;
-  border-radius: 10px; white-space: nowrap; flex-shrink: 0;
-  margin-top: 1px;
-}
-.q-good { background: rgba(45,206,137,.15); color: var(--good); border: 1px solid rgba(45,206,137,.3); }
-.q-warn { background: rgba(246,192,35,.15);  color: var(--warn); border: 1px solid rgba(246,192,35,.3); }
-.q-bad  { background: rgba(224,92,58,.15);   color: var(--bad);  border: 1px solid rgba(224,92,58,.3); }
-
-/* Charts area */
-.charts { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.charts::-webkit-scrollbar { width: 5px; }
-.charts::-webkit-scrollbar-track { background: var(--bg); }
-.charts::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-.card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 6px; padding: 10px 12px;
-}
-.card-title {
-  font-size: 0.6rem; text-transform: uppercase; letter-spacing: .08em;
-  color: var(--muted); margin-bottom: 8px;
-}
-
-/* Stats table */
-.stats { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-.stats td { padding: 3px 4px; }
-.stats td:first-child { color: var(--muted); width: 50%; }
-.stats td:last-child  { font-family: var(--mono); font-size: 0.72rem; color: #fff;
-                        text-align: right; font-weight: 500; }
-.stats .thresh-row td { border-top: 1px solid var(--border); padding-top: 6px; margin-top: 2px; }
-
-/* Threshold labels */
-.thresh-good { color: var(--good) !important; }
-.thresh-bad  { color: var(--bad)  !important; }
-
-/* ── Compare mode ───────────────────────────────────────────── */
-.cmp-header { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.cmp-slot {
-  flex: 1; padding: 9px 12px; cursor: pointer;
-  border-right: 1px solid var(--border);
-  background: var(--card); transition: background .15s;
-}
-.cmp-slot:last-child { border-right: none; }
-.cmp-slot:hover { background: rgba(0,165,207,.06); }
-.cmp-slot.active { background: rgba(0,165,207,.1); border-bottom: 2px solid var(--accent); }
-.cmp-slot.s2.active { background: rgba(253,126,20,.1); border-bottom-color: var(--accent2); }
-
-.cmp-dot {
-  width: 9px; height: 9px; border-radius: 50%; display: inline-block;
-  margin-right: 7px; flex-shrink: 0;
-}
-.cmp-label { font-size: 0.6rem; color: var(--muted); font-family: var(--mono);
-             text-transform: uppercase; letter-spacing: .05em; }
-.cmp-sitename { font-size: 0.82rem; font-weight: 600; color: var(--text); margin-top: 1px; }
-
-.cmp-body { flex: 1; display: flex; overflow: hidden; }
-.cmp-col { flex: 1; overflow-y: auto; border-right: 1px solid var(--border); }
-.cmp-col:last-child { border-right: none; }
-.cmp-col .charts { height: 100%; }
-
-.cmp-col .card-title { font-size: 0.58rem; }
-
-/* Overlay chart at bottom of compare */
-.overlay-section {
-  padding: 10px 12px; border-top: 1px solid var(--border);
-  background: var(--bg); flex-shrink: 0;
-}
-.overlay-section .card-title { font-size: 0.6rem; text-transform: uppercase;
-  letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
-
-/* ── Leaflet overrides ──────────────────────────────────────── */
-.leaflet-popup-content-wrapper {
-  background: var(--card); color: var(--text);
-  border: 1px solid var(--border); border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5);
-  font-family: var(--sans); font-size: 0.8rem;
-}
-.leaflet-popup-tip { background: var(--card); }
-.leaflet-popup-close-button { color: var(--muted) !important; }
-.popup-name { font-weight: 700; font-size: 0.88rem; color: #fff; margin-bottom: 3px; }
-.popup-val  { font-family: var(--mono); font-size: 0.75rem; color: var(--accent); }
-.popup-hint { font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
-
-/* No-data note */
-.no-data { font-size: 0.75rem; color: var(--muted); font-style: italic;
-           text-align: center; padding: 18px 0; }
-
-/* Responsive: collapse side panel on narrow screens */
-@media (max-width: 900px) {
-  .side { width: 340px; min-width: 340px; }
-  .side.cmp { width: 540px; min-width: 540px; }
-}
+.qbadge { display:inline-flex; align-items:center; gap:4px; font-size:.65rem; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; flex-shrink:0; margin-top:1px; }
+.q-good { background:rgba(45,206,137,.15); color:var(--good); border:1px solid rgba(45,206,137,.3); }
+.q-warn { background:rgba(246,192,35,.15);  color:var(--warn); border:1px solid rgba(246,192,35,.3); }
+.q-bad  { background:rgba(224,92,58,.15);   color:var(--bad);  border:1px solid rgba(224,92,58,.3); }
+.charts { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+.charts::-webkit-scrollbar { width:5px; }
+.charts::-webkit-scrollbar-track { background:var(--bg); }
+.charts::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:10px 12px; }
+.card-title { font-size:.6rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px; }
+.stats { width:100%; border-collapse:collapse; font-size:.75rem; }
+.stats td { padding:3px 4px; }
+.stats td:first-child { color:var(--muted); width:50%; }
+.stats td:last-child  { font-family:var(--mono); font-size:.72rem; color:#fff; text-align:right; font-weight:500; }
+.thresh-good { color:var(--good) !important; }
+.thresh-bad  { color:var(--bad)  !important; }
+.cmp-header { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+.cmp-slot { flex:1; padding:9px 12px; cursor:pointer; border-right:1px solid var(--border); background:var(--card); transition:background .15s; }
+.cmp-slot:last-child { border-right:none; }
+.cmp-slot:hover { background:rgba(0,165,207,.06); }
+.cmp-slot.active { background:rgba(0,165,207,.1); border-bottom:2px solid var(--accent); }
+.cmp-slot.s2.active { background:rgba(253,126,20,.1); border-bottom-color:var(--accent2); }
+.cmp-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:7px; flex-shrink:0; }
+.cmp-label { font-size:.6rem; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em; }
+.cmp-sitename { font-size:.82rem; font-weight:600; color:var(--text); margin-top:1px; }
+.cmp-body { flex:1; display:flex; overflow:hidden; }
+.cmp-col { flex:1; overflow-y:auto; border-right:1px solid var(--border); }
+.cmp-col:last-child { border-right:none; }
+.cmp-col .charts { height:100%; }
+.overlay-section { padding:10px 12px; border-top:1px solid var(--border); background:var(--bg); flex-shrink:0; }
+.overlay-section .card-title { font-size:.6rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+.no-data { font-size:.75rem; color:var(--muted); font-style:italic; text-align:center; padding:18px 0; }
 </style>
 </head>
 <body>
 
-<!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+<!-- ── Header ── -->
 <header class="hdr">
   <div class="hdr-brand">
-    <!-- Wave icon -->
-    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M2 18 C5 14, 8 22, 11 18 C14 14, 17 22, 20 18 C23 14, 26 22, 26 18"
-            stroke="#00a5cf" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M2 23 C5 19, 8 27, 11 23 C14 19, 17 27, 20 23 C23 19, 26 27, 26 23"
-            stroke="#00a5cf" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+    <svg viewBox="0 0 28 28" fill="none">
+      <path d="M2 18 C5 14,8 22,11 18 C14 14,17 22,20 18 C23 14,26 22,26 18" stroke="#00a5cf" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M2 23 C5 19,8 27,11 23 C14 19,17 27,20 23 C23 19,26 27,26 23" stroke="#00a5cf" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
       <circle cx="14" cy="9" r="4" fill="none" stroke="#00a5cf" stroke-width="1.6"/>
       <line x1="14" y1="5" x2="14" y2="3" stroke="#00a5cf" stroke-width="1.4" stroke-linecap="round"/>
     </svg>
@@ -282,144 +204,130 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
       <div class="hdr-sub">NYC DEP Harbor Survey · 1909–Present</div>
     </div>
   </div>
-
   <div class="hdr-div"></div>
-
   <div class="ctrl">
     <div class="ctrl-lbl">Parameter</div>
     <select id="paramSel"><option value="">Loading…</option></select>
   </div>
-
   <div class="ctrl">
     <div class="ctrl-lbl">Year Range</div>
     <div class="yr-row">
-      <input type="number" id="yrFrom" min="1909" max="2030" placeholder="From">
+      <input type="number" id="yrFrom" min="1909" max="2030">
       <span class="yr-sep">–</span>
-      <input type="number" id="yrTo"   min="1909" max="2030" placeholder="To">
+      <input type="number" id="yrTo"   min="1909" max="2030">
     </div>
   </div>
-
   <div class="hdr-div"></div>
-
   <div class="ctrl">
     <div class="ctrl-lbl">Compare Sites</div>
     <div class="tog-wrap">
-      <label class="tog">
-        <input type="checkbox" id="cmpToggle">
-        <span class="tog-slider"></span>
-      </label>
+      <label class="tog"><input type="checkbox" id="cmpToggle"><span class="tog-slider"></span></label>
       <span class="tog-lbl" id="cmpLbl">Off</span>
     </div>
   </div>
-
-  <div style="margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;">
+    <div class="hdr-right">
     <div class="hdr-badge">5uug-f49n · NYC Open Data</div>
-    <div class="hdr-badge" id="downloadDateBadge" style="display:none;">📅 Downloaded: <span id="downloadDateTxt"></span></div>
+    <div class="hdr-badge" id="downloadDateBadge" style="display:none">📅 Downloaded: <span id="downloadDateTxt"></span></div>
+    <div style="display:flex; gap:6px;">
+      <button class="calib-btn" onclick="resetCalibration()" title="Re-run map calibration">⊕ Recalibrate</button>
+      <button class="calib-btn" id="exportCalibBtn" onclick="exportCalibration()" style="display:none;" title="Copy calibration to bake into HTML">📋 Copy calibration</button>
+    </div>
   </div>
 </header>
 
-<!-- ══ App body ════════════════════════════════════════════════════════════ -->
+<!-- ── App body ── -->
 <div class="app">
 
-  <!-- Map panel -->
-  <div class="map-wrap">
-    <div id="map"></div>
+  <!-- Image map panel -->
+  <div class="map-wrap" id="mapWrap">
+    <img id="depImage" src="Harbor_Survey_Stations_2026.jpg" alt="NYC DEP Harbor Survey Stations 2026" draggable="false">
+    <canvas id="mapCanvas"></canvas>
 
-    <div class="legend" id="legend" style="display:none">
+    <!-- Calibration overlay -->
+    <div class="calib-overlay" id="calibOverlay" style="display:none;">
+      <div class="calib-card">
+        <h2>🎯 One-time map calibration</h2>
+        <p>Click the center of each station dot on the map image. This takes about 30 seconds and only needs to be done once.</p>
+        <div class="calib-progress" id="calibProgress">Station 1 of 6</div>
+        <div class="calib-station">
+          <div class="code" id="calibCode">—</div>
+          <div class="name" id="calibName">—</div>
+        </div>
+        <div class="calib-hint">👆 Click the dot on the map to the left</div>
+        <div style="margin-top:10px;">
+          <span class="calib-skip" onclick="skipCalibration()">Skip calibration (use approximate positions)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hover tooltip -->
+    <div class="map-tooltip" id="mapTooltip" style="display:none;">
+      <div class="tt-code" id="tt-code"></div>
+      <div class="tt-name" id="tt-name"></div>
+      <div class="tt-val"  id="tt-val"></div>
+      <div class="tt-hint">Click to view data</div>
+    </div>
+
+    <!-- Color legend -->
+    <div class="legend" id="legend" style="display:none;">
       <div class="legend-title" id="lgTitle">—</div>
-      <div class="legend-bar" id="lgBar"></div>
+      <div class="legend-bar"   id="lgBar"></div>
       <div class="legend-ends">
         <span id="lgMin">Low</span>
         <span id="lgMax">High</span>
       </div>
-      <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); display:flex; gap:12px; font-size:.65rem; color:var(--muted);">
-        <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);background:transparent;margin-right:4px;vertical-align:middle;"></span>Open Water</span>
-        <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(45,206,137,.8);background:transparent;margin-right:4px;vertical-align:middle;"></span>Tributary</span>
-      </div>
-    </div>
-
-    <div class="loading-veil" id="veil">
-      <div class="spin"></div>
-      <div class="loading-txt" id="veilTxt">Loading data…</div>
-      <div style="width:220px; height:3px; background:var(--border); border-radius:2px; margin-top:4px;">
-        <div id="veilBar" style="height:100%; width:0%; background:var(--accent); border-radius:2px; transition:width .3s;"></div>
+      <div class="legend-types">
+        <span><span class="legend-dot" style="border:1.5px solid #444; background:transparent;"></span>Open Water</span>
+        <span><span class="legend-dot" style="border:1.5px solid var(--good); background:transparent;"></span>Tributary</span>
       </div>
     </div>
   </div>
 
-  <!-- Analysis panel -->
+  <!-- Side panel (identical to original) -->
   <aside class="side" id="side">
-
-    <!-- Empty state -->
     <div class="empty" id="emptyState">
       <div class="empty-icon">📍</div>
       <h3>Select a Station</h3>
-      <p>Click any marker on the map to explore water quality data for that monitoring location.</p>
+      <p>Click any station dot on the DEP map to explore water quality data.</p>
       <div class="empty-hint" id="siteCount">— stations loaded</div>
     </div>
-
-    <!-- Single-site view -->
     <div id="singleView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
       <div class="site-hdr">
         <div class="site-row">
-          <div>
-            <div class="site-name" id="sv-name">—</div>
-            <div class="site-meta" id="sv-meta">—</div>
-          </div>
+          <div><div class="site-name" id="sv-name">—</div><div class="site-meta" id="sv-meta">—</div></div>
           <div id="sv-badge"></div>
         </div>
       </div>
       <div class="charts" id="sv-charts">
-        <div class="card">
-          <div class="card-title">Time Series</div>
-          <canvas id="c-ts" height="130"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-title">Monthly Average (Seasonality)</div>
-          <canvas id="c-sea" height="90"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-title">Summary Statistics</div>
-          <table class="stats" id="sv-stats"></table>
-          <div id="sv-thresh" style="margin-top:8px;"></div>
-        </div>
+        <div class="card"><div class="card-title">Time Series</div><canvas id="c-ts" height="130"></canvas></div>
+        <div class="card"><div class="card-title">Monthly Average (Seasonality)</div><canvas id="c-sea" height="90"></canvas></div>
+        <div class="card"><div class="card-title">Summary Statistics</div><table class="stats" id="sv-stats"></table><div id="sv-thresh" style="margin-top:8px;"></div></div>
       </div>
     </div>
-
-    <!-- Compare view -->
     <div id="cmpView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
-      <!-- Slot headers -->
       <div class="cmp-header">
         <div class="cmp-slot active" id="slot1" onclick="setSlot(1)">
           <div style="display:flex; align-items:center;">
             <span class="cmp-dot" style="background:var(--accent)"></span>
-            <div>
-              <div class="cmp-label">Site 1 — click to fill</div>
-              <div class="cmp-sitename" id="cmp-name1">— Select on map</div>
-            </div>
+            <div><div class="cmp-label">Site 1 — click to fill</div><div class="cmp-sitename" id="cmp-name1">— Select on map</div></div>
           </div>
         </div>
         <div class="cmp-slot s2" id="slot2" onclick="setSlot(2)">
           <div style="display:flex; align-items:center;">
             <span class="cmp-dot" style="background:var(--accent2)"></span>
-            <div>
-              <div class="cmp-label">Site 2 — click to fill</div>
-              <div class="cmp-sitename" id="cmp-name2">— Select on map</div>
-            </div>
+            <div><div class="cmp-label">Site 2 — click to fill</div><div class="cmp-sitename" id="cmp-name2">— Select on map</div></div>
           </div>
         </div>
       </div>
-
-      <!-- Two column charts -->
       <div class="cmp-body">
-        <div class="cmp-col" id="cmpCol1">
+        <div class="cmp-col">
           <div class="charts">
             <div class="card"><div class="card-title">Time Series</div><canvas id="c-ts2" height="110"></canvas></div>
             <div class="card"><div class="card-title">Monthly Avg</div><canvas id="c-sea2" height="80"></canvas></div>
             <div class="card"><div class="card-title">Summary Statistics</div><table class="stats" id="cmp-stats1"></table></div>
           </div>
         </div>
-        <div class="cmp-col" id="cmpCol2">
+        <div class="cmp-col">
           <div class="charts">
             <div class="card"><div class="card-title">Time Series</div><canvas id="c-ts3" height="110"></canvas></div>
             <div class="card"><div class="card-title">Monthly Avg</div><canvas id="c-sea3" height="80"></canvas></div>
@@ -427,235 +335,520 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
           </div>
         </div>
       </div>
-
-      <!-- Overlay comparison -->
       <div class="overlay-section" id="overlaySec" style="display:none;">
         <div class="card-title">Both Sites Overlaid</div>
         <canvas id="c-overlay" height="75"></canvas>
       </div>
     </div>
-
   </aside>
+
 </div>
 
-<!-- ══ JavaScript ══════════════════════════════════════════════════════════ -->
 <script>
 "use strict";
 
-/* ── State ──────────────────────────────────────────────────────────────── */
-const S = {
-  data:      null,    // full loaded dataset
-  param:     null,    // selected parameter id
-  yrFrom:    new Date().getFullYear() - 10,
-  yrTo:      new Date().getFullYear(),
-  site1:     null,
-  site2:     null,
-  comparing: false,
-  slot:      1,       // active compare slot (1 or 2)
-};
-
-const charts = {};   // id → Chart instance
-const markers = {};  // siteName → L.CircleMarker
-let   leafmap = null;
-
-/* ── Hardcoded DEP station coordinates (source: NYC DEP site map) ────────── */
-const DEP_COORDS = {
-  // Staten Island Transects — Open Water
-  'K1':  { lat: 40.6433, lon: -74.0739, type: 'open_water', name: 'St. George' },
-  'K2':  { lat: 40.6409, lon: -74.1453, type: 'open_water', name: 'Shooter Island' },
-  'K3':  { lat: 40.6361, lon: -74.1631, type: 'open_water', name: 'A & K Railroad Bridge' },
-  'K4':  { lat: 40.5719, lon: -74.1833, type: 'open_water', name: 'Fresh Kills' },
-  'K5':  { lat: 40.5161, lon: -74.2461, type: 'open_water', name: 'Tottenville' },
-  'K5A': { lat: 40.4991, lon: -74.2721, type: 'open_water', name: 'Raritan River' },
-  'K6':  { lat: 40.5021, lon: -74.1883, type: 'open_water', name: 'Old Orchard Light' },
-  // Hudson Transects — Open Water
-  'N1':  { lat: 40.8775, lon: -73.9127, type: 'open_water', name: 'Mt. St. Vincent' },
-  'N3B': { lat: 40.8116, lon: -73.9501, type: 'open_water', name: 'W. 125th Street' },
-  'N4':  { lat: 40.7602, lon: -73.9976, type: 'open_water', name: 'W. 42nd Street' },
-  'N5':  { lat: 40.7012, lon: -74.0177, type: 'open_water', name: 'Pier A — The Battery' },
-  'N6':  { lat: 40.6272, lon: -74.0402, type: 'open_water', name: 'Bell Buoy "31"' },
-  'G2':  { lat: 40.6721, lon: -74.0158, type: 'open_water', name: 'Gowanus Canal' },
-  'N7':  { lat: 40.6584, lon: -74.0649, type: 'open_water', name: 'Robbins Reef Buoy "28"' },
-  'N8':  { lat: 40.6120, lon: -74.0531, type: 'open_water', name: 'The Narrows' },
-  'N9':  { lat: 40.5726, lon: -74.0019, type: 'open_water', name: 'Steeplechase Pier' },
-  'N16': { lat: 40.5562, lon: -73.9416, type: 'open_water', name: 'Rockaway Point' },
-  'NR1': { lat: 40.7754, lon: -74.0059, type: 'tributary',  name: 'North River WWTP' },
-  // East River — Open Water
-  'E2':  { lat: 40.7399, lon: -73.9716, type: 'open_water', name: 'E. 23rd Street' },
-  'E4':  { lat: 40.7797, lon: -73.9318, type: 'open_water', name: 'Hell Gate' },
-  'E6':  { lat: 40.7773, lon: -73.8830, type: 'open_water', name: 'Flushing Bay' },
-  'E7':  { lat: 40.8038, lon: -73.8399, type: 'open_water', name: 'Whitestone Bridge' },
-  'E8':  { lat: 40.8055, lon: -73.7955, type: 'open_water', name: 'Throgs Neck Bridge' },
-  'E10': { lat: 40.8513, lon: -73.7627, type: 'open_water', name: 'Hart Island' },
-  'E11': { lat: 40.8303, lon: -73.7404, type: 'open_water', name: 'Little Neck Bay' },
-  'E12': { lat: 40.8621, lon: -73.8028, type: 'open_water', name: 'Eastchester Bay Buoy N°6' },
-  'E13': { lat: 40.8281, lon: -73.8309, type: 'open_water', name: 'Westchester Creek Buoy N°2' },
-  'E14': { lat: 40.8142, lon: -73.8593, type: 'open_water', name: 'Mouth of Bronx River Buoy N°2' },
-  'E15': { lat: 40.7651, lon: -73.8673, type: 'open_water', name: 'Flushing Bay South Buoy N°2' },
-  // Jamaica Bay — Open Water
-  'J1':  { lat: 40.5682, lon: -73.9470, type: 'open_water', name: 'Rockaway Inlet' },
-  'J2':  { lat: 40.6041, lon: -73.9254, type: 'open_water', name: 'Mill Basin' },
-  'J3':  { lat: 40.6339, lon: -73.8952, type: 'open_water', name: 'Canarsie Pier' },
-  'J5':  { lat: 40.6176, lon: -73.8763, type: 'open_water', name: 'Railroad Trestle' },
-  'J7':  { lat: 40.6371, lon: -73.8769, type: 'open_water', name: 'Bergen Basin' },
-  'J8':  { lat: 40.6448, lon: -73.8619, type: 'open_water', name: 'Spring Creek' },
-  'J9A': { lat: 40.6334, lon: -73.8795, type: 'open_water', name: 'Fresh Creek Buoy "C21"' },
-  'J10': { lat: 40.6253, lon: -73.9039, type: 'open_water', name: 'Paerdegat Basin' },
-  'J11': { lat: 40.5843, lon: -73.9442, type: 'open_water', name: 'Sheepshead Bay' },
-  'J12': { lat: 40.6096, lon: -73.8373, type: 'open_water', name: 'Grassy Bay' },
-  'JA1': { lat: 40.6473, lon: -73.8232, type: 'open_water', name: 'Jamaica WWTP Outfall' },
-  'N9A': { lat: 40.5738, lon: -73.9873, type: 'open_water', name: 'Coney Island Outfall' },
-  // Jamaica Bay Interior — Open Water
-  'J14': { lat: 40.6153, lon: -73.8564, type: 'open_water', name: 'West of Broad Channel' },
-  'J16': { lat: 40.6061, lon: -73.8329, type: 'open_water', name: 'Horse Channel' },
-  'J18': { lat: 40.5912, lon: -73.8258, type: 'open_water', name: 'Pumpkin Patch' },
-  // Harlem River — Open Water
-  'H3':  { lat: 40.8264, lon: -73.9264, type: 'open_water', name: 'E. 155th Street' },
-  // Tributaries
-  'AC1': { lat: 40.7713, lon: -73.7445, type: 'tributary', name: 'Alley Creek & Northern Blvd' },
-  'AC2': { lat: 40.7641, lon: -73.7524, type: 'tributary', name: 'Alley Creek Outfall' },
-  'BB2': { lat: 40.6451, lon: -73.8572, type: 'tributary', name: 'Head of Bergen Basin' },
-  'BB4': { lat: 40.6361, lon: -73.8691, type: 'tributary', name: 'Mouth of Bergen Basin' },
-  'BR1': { lat: 40.8882, lon: -73.8702, type: 'tributary', name: '233rd St & Bronx River' },
-  'BR3': { lat: 40.8322, lon: -73.8723, type: 'tributary', name: 'Westchester Ave & Bronx River' },
-  'BR5': { lat: 40.8082, lon: -73.8762, type: 'tributary', name: 'Mouth of Bronx River' },
-  'CIC2':{ lat: 40.5876, lon: -73.9955, type: 'tributary', name: 'Cropsy Ave & Coney Island Creek' },
-  'CIC3':{ lat: 40.5918, lon: -73.9991, type: 'tributary', name: 'Coney Island Creek' },
-  'F1':  { lat: 40.6621, lon: -73.8793, type: 'tributary', name: 'Fresh Creek Outfall' },
-  'F5':  { lat: 40.6441, lon: -73.8862, type: 'tributary', name: 'Mouth of Fresh Creek' },
-  'FB1': { lat: 40.7784, lon: -73.8510, type: 'tributary', name: 'Flushing Bay North' },
-  'FLC1':{ lat: 40.7591, lon: -73.8327, type: 'tributary', name: 'Flushing Creek' },
-  'FLC2':{ lat: 40.7637, lon: -73.8421, type: 'tributary', name: 'Mouth of Flushing Creek' },
-  'GB1': { lat: 40.5916, lon: -74.0070, type: 'tributary', name: 'Gravesend Bay' },
-  'GC3': { lat: 40.6779, lon: -73.9997, type: 'tributary', name: 'Union Street Bridge' },
-  'GC4': { lat: 40.6756, lon: -73.9994, type: 'tributary', name: 'Carroll Street Bridge' },
-  'GC5': { lat: 40.6742, lon: -73.9990, type: 'tributary', name: '3rd Street Bridge' },
-  'GC6': { lat: 40.6718, lon: -73.9982, type: 'tributary', name: '9th Street Bridge' },
-  'HC1': { lat: 40.6494, lon: -73.8648, type: 'tributary', name: 'Hendrix Creek Head' },
-  'HC2': { lat: 40.6420, lon: -73.8616, type: 'tributary', name: 'Hendrix at 26th Ward Outfall' },
-  'HC3': { lat: 40.6385, lon: -73.8628, type: 'tributary', name: 'Hendrix Creek under Belt Pkwy' },
-  'HR1': { lat: 40.8524, lon: -73.8310, type: 'tributary', name: 'Bartow Av Br & Hutchinson River Pkwy' },
-  'HR2': { lat: 40.8603, lon: -73.8446, type: 'tributary', name: 'Boston Rd Br & Conner Ave' },
-  'HR03':{ lat: 40.8663, lon: -73.8512, type: 'tributary', name: 'Conner Street Pump Station' },
-  'LN1': { lat: 40.7901, lon: -73.7240, type: 'tributary', name: 'Little Neck Bay South' },
-  'NC0': { lat: 40.7048, lon: -73.9145, type: 'tributary', name: 'English Kills' },
-  'NC0B':{ lat: 40.7181, lon: -73.9072, type: 'tributary', name: 'Grand Ave & Newtown Creek' },
-  'NC1': { lat: 40.7188, lon: -73.8983, type: 'tributary', name: 'Maspeth Creek' },
-  'NC2': { lat: 40.7172, lon: -73.8956, type: 'tributary', name: 'Amoco Tank Farm' },
-  'NC3': { lat: 40.7152, lon: -73.8937, type: 'tributary', name: 'Whale Creek' },
-  'PB2': { lat: 40.6312, lon: -73.9062, type: 'tributary', name: 'Middle of Paerdegat Basin' },
-  'PB3': { lat: 40.6228, lon: -73.9098, type: 'tributary', name: 'Mouth of Paerdegat Basin' },
-  'SP1': { lat: 40.6531, lon: -73.8419, type: 'tributary', name: 'Spring Creek under Belt Pkwy' },
-  'SP2': { lat: 40.6471, lon: -73.8541, type: 'tributary', name: 'Spring Creek' },
-  'TB1': { lat: 40.5940, lon: -73.7742, type: 'tributary', name: 'Thurston Basin' },
-  'TB2': { lat: 40.5908, lon: -73.7703, type: 'tributary', name: 'Thurston Basin Mouth' },
-  'TR1': { lat: 40.5779, lon: -73.9770, type: 'tributary', name: 'West 78th St' },
-  'TR2': { lat: 40.5739, lon: -73.9789, type: 'tributary', name: 'West 95th St' },
-  'N3C': { lat: 40.5760, lon: -73.9795, type: 'tributary', name: 'West 88th St' },
-  'WC1': { lat: 40.8162, lon: -73.8304, type: 'tributary', name: 'WC Bruckner & Cross Bronx Exps' },
-  'WC2': { lat: 40.8141, lon: -73.8222, type: 'tributary', name: 'South Bound Hutchinson Pkwy' },
-  'WC3': { lat: 40.8109, lon: -73.8083, type: 'tributary', name: 'Buoy "10"' },
-};
-
-// Sites shown on the 2026 DEP Harbor Water Quality Survey Stations map
+/* ── Active sites & coordinates ── (identical to original) ───────────────── */
 const ACTIVE_SITES = new Set([
-  // Staten Island Transects
   'K1','K2','K3','K4','K5','K5A','K6',
-  // Hudson Transects
-  'N1','N3B','N4','N5','N6','G2','N7','N8','N9','N16',
-  // East River
-  'E2','E4','E6','E7','E8','E10','E11','E12','E13','E14','E15',
-  // Jamaica Bay
-  'J1','J2','J3','J5','J7','J8','J9A','J10','J11','J12','JA1','N9A',
-  // Jamaica Bay Interior
-  'J14','J16','J18',
-  // Harlem River
-  'H3',
-  // Tributaries
-  'AC1','AC2','BB2','BB4','BR1','BR3','BR5',
-  'CIC2','CIC3','F1','F5','FB1','FLC1','FLC2','GB1',
-  'GC3','GC4','GC5','GC6',
+  'AC1','AC2','BB2','BB4','BR1','BR3','BR5','CIC2','CIC3',
+  'F1','F5','FB1','FLC1','FLC2','GB1','GC3','GC4','GC5','GC6',
   'HC1','HC2','HC3','HR1','HR2','HR03','LN1',
-  'NC0','NC0B','NC1','NC2','NC3',
-  'PB2','PB3','SP1','SP2','TB1','TB2',
+  'NC0','NC0B','NC1','NC2','NC3','PB2','PB3','SP1','SP2','TB1','TB2',
   'WC1','WC2','WC3',
+  'N1','N3B','N4','N5','N6','G2','N7','N8','N9','N16',
+  'E2','E4','E6','E7','E8','E10','E11','E12','E13','E14','E15',
+  'J1','J2','J3','J5','J7','J8','J9A','J10','J11','J12','JA1','N9A',
+  'J14','J16','J18','H3',
 ]);
-const THRESHOLDS = {
-  coliform:   { bathing: 200,  fishing: 1000, dir: 'lo' },
-  enterococ:  { bathing: 35,                  dir: 'lo' },
-  oxygen:     { state: 5.0,                   dir: 'hi' },
+
+const DEP_COORDS = {
+  'K1': {lat:40.65111,lon:-74.08194,type:'open_water',name:'St. George'},
+  'K2': {lat:40.64117,lon:-74.15300,type:'open_water',name:'Shooter Island'},
+  'K3': {lat:40.63750,lon:-74.19583,type:'open_water',name:'A & K Railroad Bridge'},
+  'K4': {lat:40.56700,lon:-74.21167,type:'open_water',name:'Fresh Kills'},
+  'K5': {lat:40.50883,lon:-74.25883,type:'open_water',name:'Tottenville'},
+  'K5A':{lat:40.48450,lon:-74.24583,type:'open_water',name:'Raritan River'},
+  'K6': {lat:40.51033,lon:-74.10083,type:'open_water',name:'Old Orchard Light'},
+  'N1': {lat:40.91450,lon:-73.91617,type:'open_water',name:'Mt. St. Vincent'},
+  'N3B':{lat:40.82083,lon:-73.96533,type:'open_water',name:'W. 125th Street'},
+  'N4': {lat:40.76450,lon:-74.00583,type:'open_water',name:'W. 42nd Street'},
+  'N5': {lat:40.70450,lon:-74.03000,type:'open_water',name:'Pier A - The Battery'},
+  'N6': {lat:40.66467,lon:-74.05133,type:'open_water',name:'Bell Buoy "31"'},
+  'G2': {lat:40.66667,lon:-74.00333,type:'open_water',name:'Gowanus Canal'},
+  'N7': {lat:40.64383,lon:-74.05383,type:'open_water',name:'Robbins Reef Buoy "28"'},
+  'N8': {lat:40.60617,lon:-74.04550,type:'open_water',name:'The Narrows'},
+  'N9': {lat:40.56833,lon:-73.98333,type:'open_water',name:'Steeplechase Pier'},
+  'N16':{lat:40.52967,lon:-73.94367,type:'open_water',name:'Rockaway Point'},
+  'E2': {lat:40.73533,lon:-73.97000,type:'open_water',name:'E 23rd Street'},
+  'E4': {lat:40.78250,lon:-73.92200,type:'open_water',name:'Hell Gate'},
+  'E6': {lat:40.78550,lon:-73.86083,type:'open_water',name:'Flushing Bay'},
+  'E7': {lat:40.80500,lon:-73.82050,type:'open_water',name:'Whitestone Bridge'},
+  'E8': {lat:40.80050,lon:-73.78367,type:'open_water',name:'Throgs Neck Bridge'},
+  'E10':{lat:40.84367,lon:-73.76533,type:'open_water',name:'Hart Island'},
+  'E11':{lat:40.78750,lon:-73.76333,type:'open_water',name:'Little Neck Bay'},
+  'E12':{lat:40.85444,lon:-73.80945,type:'open_water',name:'Eastchester Bay Buoy N°6'},
+  'E13':{lat:40.80611,lon:-73.84111,type:'open_water',name:'Westchester Creek Buoy N°2'},
+  'E14':{lat:40.80083,lon:-73.86450,type:'open_water',name:'Mouth of Bronx River Buoy N°2'},
+  'E15':{lat:40.76300,lon:-73.84950,type:'open_water',name:'Flushing Bay South Buoy N°2'},
+  'J1': {lat:40.57333,lon:-73.88467,type:'open_water',name:'Rockaway Inlet'},
+  'J2': {lat:40.60806,lon:-73.88584,type:'open_water',name:'Mill Basin'},
+  'J3': {lat:40.62700,lon:-73.88283,type:'open_water',name:'Canarsie Pier'},
+  'J5': {lat:40.59767,lon:-73.80900,type:'open_water',name:'Railroad Trestle'},
+  'J7': {lat:40.64533,lon:-73.82083,type:'open_water',name:'Bergen Basin'},
+  'J8': {lat:40.64283,lon:-73.85117,type:'open_water',name:'Spring Creek'},
+  'J9A':{lat:40.63383,lon:-73.87367,type:'open_water',name:'Fresh Creek Buoy "C21"'},
+  'J10':{lat:40.62167,lon:-73.89472,type:'open_water',name:'Paerdegat Basin'},
+  'J11':{lat:40.58167,lon:-73.93133,type:'open_water',name:'Sheepshead Bay'},
+  'J12':{lat:40.63300,lon:-73.80606,type:'open_water',name:'Grassy Bay'},
+  'JA1':{lat:40.64300,lon:-73.81300,type:'open_water',name:'Jamaica WWTP Outfall'},
+  'N9A':{lat:40.56783,lon:-73.93550,type:'open_water',name:'Coney Island Outfall'},
+  'J14':{lat:40.60917,lon:-73.82378,type:'open_water',name:'West of Broad Channel'},
+  'J16':{lat:40.61142,lon:-73.84761,type:'open_water',name:'Horse Channel'},
+  'J18':{lat:40.61950,lon:-73.84717,type:'open_water',name:'Pumpkin Patch'},
+  'H3': {lat:40.82800,lon:-73.93383,type:'open_water',name:'E 155th Street'},
+  'AC1':{lat:40.76317,lon:-73.75175,type:'tributary',name:'Alley Creek & Northern Blvd'},
+  'AC2':{lat:40.76190,lon:-73.75101,type:'tributary',name:'Alley Creek Outfall'},
+  'BB2':{lat:40.66004,lon:-73.82216,type:'tributary',name:'Head of Bergen Basin'},
+  'BB4':{lat:40.65164,lon:-73.82316,type:'tributary',name:'Mouth of Bergen Basin'},
+  'BR1':{lat:40.89314,lon:-73.86271,type:'tributary',name:'233rd St & Bronx River'},
+  'BR3':{lat:40.82537,lon:-73.88480,type:'tributary',name:'Westchester Ave & Bronx River'},
+  'BR5':{lat:40.81367,lon:-73.87133,type:'tributary',name:'Mouth of Bronx River'},
+  'CIC2':{lat:40.58167,lon:-73.98564,type:'tributary',name:'Cropsey Ave & Coney Island Creek'},
+  'CIC3':{lat:40.58033,lon:-73.99417,type:'tributary',name:'Coney Island Creek'},
+  'F1': {lat:40.64315,lon:-73.88413,type:'tributary',name:'Fresh Creek Outfall'},
+  'F5': {lat:40.63878,lon:-73.87896,type:'tributary',name:'Mouth of Fresh Creek'},
+  'FB1':{lat:40.77250,lon:-73.85306,type:'tributary',name:'Flushing Bay North'},
+  'FLC1':{lat:40.76217,lon:-73.83667,type:'tributary',name:'Flushing Creek'},
+  'FLC2':{lat:40.76500,lon:-73.84283,type:'tributary',name:'Mouth of Flushing Creek'},
+  'GB1':{lat:40.60000,lon:-74.01367,type:'tributary',name:'Gravesend Bay'},
+  'GC3':{lat:40.67943,lon:-73.98824,type:'tributary',name:'Union Street Bridge'},
+  'GC4':{lat:40.67803,lon:-73.98907,type:'tributary',name:'Carroll Street Bridge'},
+  'GC5':{lat:40.67614,lon:-73.99005,type:'tributary',name:'3rd Street Bridge'},
+  'GC6':{lat:40.67417,lon:-73.99639,type:'tributary',name:'9th Street Bridge'},
+  'HC1':{lat:40.65359,lon:-73.87891,type:'tributary',name:'Hendrix Creek Head'},
+  'HC2':{lat:40.65078,lon:-73.87684,type:'tributary',name:'Hendrix at 26th Ward Outfall'},
+  'HC3':{lat:40.64672,lon:-73.87356,type:'tributary',name:'Hendrix Creek under Belt Pkwy'},
+  'HR1':{lat:40.86870,lon:-73.82130,type:'tributary',name:'Bartow Av Br & Hutchinson River Pkwy'},
+  'HR2':{lat:40.88791,lon:-73.82403,type:'tributary',name:'Boston Rd Br & Conner Ave'},
+  'HR03':{lat:40.88087,lon:-73.82087,type:'tributary',name:'Conner Street Pump Station'},
+  'LN1':{lat:40.77800,lon:-73.76083,type:'tributary',name:'Little Neck Bay South'},
+  'NC0':{lat:40.71496,lon:-73.93156,type:'tributary',name:'English Kills'},
+  'NC0B':{lat:40.71694,lon:-73.92286,type:'tributary',name:'Grand Ave & Newtown Creek'},
+  'NC1':{lat:40.72454,lon:-73.92684,type:'tributary',name:'Maspeth Creek'},
+  'NC2':{lat:40.72883,lon:-73.93550,type:'tributary',name:'Amoco Tank Farm'},
+  'NC3':{lat:40.73717,lon:-73.94617,type:'tributary',name:'Whale Creek'},
+  'PB2':{lat:40.62801,lon:-73.90967,type:'tributary',name:'Middle of Paerdegat Basin'},
+  'PB3':{lat:40.62342,lon:-73.89983,type:'tributary',name:'Mouth of Paerdegat Basin'},
+  'SP1':{lat:40.65507,lon:-73.86029,type:'tributary',name:'Spring Creek under Belt Pkwy'},
+  'SP2':{lat:40.64333,lon:-73.85417,type:'tributary',name:'Spring Creek'},
+  'TB1':{lat:40.64233,lon:-73.74733,type:'tributary',name:'Thurston Basin'},
+  'TB2':{lat:40.63380,lon:-73.74822,type:'tributary',name:'Thurston Basin Mouth'},
+  'WC1':{lat:40.82775,lon:-73.84228,type:'tributary',name:'WC Bruckner & Cross BX Exps'},
+  'WC2':{lat:40.83888,lon:-73.83984,type:'tributary',name:'South Bound Hutchinson Pkwy'},
+  'WC3':{lat:40.81507,lon:-73.84319,type:'tributary',name:'Buoy "10"'},
 };
 
-/* ── CSV config ──────────────────────────────────────────────────────────── */
-const CSV_FILE = 'Harbor_Water_Quality_20260701.csv';
+/* ── State ─────────────────────────────────────────────────────────────────── */
+const S = {
+  data: null, param: null,
+  yrFrom: new Date().getFullYear() - 10,
+  yrTo:   new Date().getFullYear(),
+  site1: null, site2: null, comparing: false, slot: 1,
+};
+const charts = {};
+const siteCache = {};
 
-// Columns that are NOT water quality parameters (exact header names from CSV)
-const CSV_SKIP = new Set([
-  'Sampling Location', 'Duplicate Sample', 'Sample Date', 'Sample Time',
-  'Weather Condition (Dry or Wet)',
-  'Current Speed (knot)', 'Current Direction (Current Direction)',
-  'Wind Speed (mph)', 'Wind Direction (Wind Direction)', 'Sea State',
-  'Fecal Coliform Top Sample Less Than or Greater Than Result',
-  'Fecal Coliform Bottom Sample Less Than or Greater Than Result',
-  'Enterococcus Top Sample Less Than or Greater Than Result',
-  'Enterococcus Bottom Sample Less Than or Greater Than Result',
-  'Sampling Comment', 'Long', 'Lat', 'Type',
-]);
+/* ── Calibration system ────────────────────────────────────────────────────── */
+// 6 open-water stations spread across the map — click their dots to calibrate
+const CALIB_STATIONS = [
+  { code:'N1',  hint:'top of map, Hudson River, northernmost dot' },
+  { code:'E10', hint:'top right, in the Long Island Sound' },
+  { code:'K5',  hint:'bottom left, Staten Island southern tip' },
+  { code:'N16', hint:'bottom, Atlantic Ocean shoreline' },
+  { code:'E11', hint:'far right, Little Neck Bay area' },
+  { code:'N8',  hint:'center, The Narrows between Staten Island & Brooklyn' },
+];
 
-function colLabel(col) {
-  // Extract unit from trailing parenthetical e.g. "Temperature (ºC)"
-  const unitMatch = col.match(/\(([^)]+)\)\s*$/);
-  let unit  = '';
-  let label = col;
-  if (unitMatch) {
-    unit  = unitMatch[1].replace(/Â/g, '').replace('u/', 'µ/');
-    label = col.slice(0, col.lastIndexOf(unitMatch[0])).trim();
+const CALIB_KEY = 'nyc-wq-calib-v3';
+
+// ── Paste your calibration here to skip the prompt for all users ───────────
+// After calibrating, click "📋 Copy calibration" in the header,
+// then replace null below with the copied value.
+const BAKED_CALIBRATION = null;
+// Example: const BAKED_CALIBRATION = {"lat":[...],"lon":[...],"px":[...],"py":[...]};
+// ─────────────────────────────────────────────────────────────────────────────
+let calibPts   = [];
+let calibIdx   = 0;
+let geoTransform = null;  // { lat[], lon[], px[], py[] } affine coefficients
+let calibMode  = false;
+
+function loadCalibration() {
+  // 1. Use baked-in calibration if present (no prompt for any user)
+  if (BAKED_CALIBRATION) {
+    geoTransform = BAKED_CALIBRATION;
+    return true;
   }
-  // Fix common UTF-8 mangling
-  label = label.replace(/Âº/g, '°').replace(/Âµ/g, 'µ').replace(/Â/g, '');
-  unit  = unit.replace(/Âº/g, '°').replace(/Âµ/g, 'µ').replace(/Â/g, '');
-  return { label, unit };
+  // 2. Fall back to this browser's saved calibration
+  const saved = localStorage.getItem(CALIB_KEY);
+  if (saved) {
+    geoTransform = JSON.parse(saved);
+    return true;
+  }
+  return false;
 }
 
-/* ── Init ────────────────────────────────────────────────────────────────── */
-async function init() {
-  initMap();
-  setDefaultYears();
-  bindControls();
-  showDownloadDate();
-  loadCSV();
+function exportCalibration() {
+  if (!geoTransform) { alert('No calibration saved yet.'); return; }
+  const json = JSON.stringify(geoTransform);
+  navigator.clipboard.writeText(json).then(() => {
+    const btn = document.getElementById('exportCalibBtn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy calibration'; }, 2500);
+  }).catch(() => {
+    // Fallback: show in a prompt so user can copy manually
+    prompt('Copy this calibration value and paste it into BAKED_CALIBRATION in index.html:', json);
+  });
 }
+
+function showCalibration() {
+  calibMode = true;
+  calibPts  = [];
+  calibIdx  = 0;
+  document.getElementById('calibOverlay').style.display = 'flex';
+  document.getElementById('mapCanvas').style.cursor = 'crosshair';
+  updateCalibUI();
+}
+
+function updateCalibUI() {
+  const st = CALIB_STATIONS[calibIdx];
+  const info = DEP_COORDS[st.code];
+  document.getElementById('calibProgress').textContent = `Station ${calibIdx + 1} of ${CALIB_STATIONS.length}`;
+  document.getElementById('calibCode').textContent = `${st.code} — ${info.name}`;
+  document.getElementById('calibName').textContent = st.hint;
+}
+
+function skipCalibration() {
+  // Approximate affine transform using known geographic bounds of the DEP 2026 image
+  // Computed from the image extent: SW[40.43,-74.44] → NE[40.96,-73.62]
+  // These are estimates — calibration gives much better results
+  const img = document.getElementById('depImage');
+  const W = img.naturalWidth  || 1700;
+  const H = img.naturalHeight || 1174;
+  // lat = a0 + a1*px + a2*py
+  geoTransform = {
+    lat: [ 40.96, 0, -(40.96 - 40.43) / H ],
+    lon: [ -74.44, (74.44 - 73.62) / W, 0  ],
+    px:  [ 0, W / (74.44 - 73.62), 0        ],
+    py:  [ 0, 0, H / (40.96 - 40.43)        ],
+  };
+  finishCalibration(false);
+}
+
+function finishCalibration(save = true) {
+  calibMode = false;
+  document.getElementById('calibOverlay').style.display = 'none';
+  if (save) localStorage.setItem(CALIB_KEY, JSON.stringify(geoTransform));
+  document.getElementById('exportCalibBtn').style.display = 'block';
+  drawMarkers();
+}
+
+function resetCalibration() {
+  localStorage.removeItem(CALIB_KEY);
+  geoTransform = null;
+  showCalibration();
+}
+
+function onCalibClick(imgX, imgY) {
+  const st   = CALIB_STATIONS[calibIdx];
+  const info = DEP_COORDS[st.code];
+  calibPts.push({ px: imgX, py: imgY, lat: info.lat, lon: info.lon });
+  calibIdx++;
+
+  if (calibIdx < CALIB_STATIONS.length) {
+    updateCalibUI();
+    // Flash confirmation on canvas
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    const cp = imgToCanvas(imgX, imgY);
+    ctx.beginPath();
+    ctx.arc(cp.x, cp.y, 12, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(45,206,137,.4)';
+    ctx.fill();
+    ctx.strokeStyle = '#2dce89';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    computeCalibTransform();
+    finishCalibration();
+  }
+}
+
+function computeCalibTransform() {
+  const pts = calibPts;
+  const A   = pts.map(p => [1, p.px, p.py]);
+  const B   = pts.map(p => [1, p.lat, p.lon]);
+  geoTransform = {
+    lat: lsq(A, pts.map(p => p.lat)),
+    lon: lsq(A, pts.map(p => p.lon)),
+    px:  lsq(B, pts.map(p => p.px)),
+    py:  lsq(B, pts.map(p => p.py)),
+  };
+}
+
+/* ── Coordinate math ───────────────────────────────────────────────────────── */
+function pxToGeo(px, py) {
+  const c = geoTransform;
+  return { lat: c.lat[0]+c.lat[1]*px+c.lat[2]*py, lon: c.lon[0]+c.lon[1]*px+c.lon[2]*py };
+}
+
+function geoToPx(lat, lon) {
+  const c = geoTransform;
+  return { x: c.px[0]+c.px[1]*lat+c.px[2]*lon, y: c.py[0]+c.py[1]*lat+c.py[2]*lon };
+}
+
+function getDisplay() {
+  const img = document.getElementById('depImage');
+  const wrap = document.getElementById('mapWrap');
+  const cW = wrap.clientWidth, cH = wrap.clientHeight;
+  const iW = img.naturalWidth  || 1, iH = img.naturalHeight || 1;
+  const scale = Math.min(cW/iW, cH/iH);
+  return { scale, offX:(cW-iW*scale)/2, offY:(cH-iH*scale)/2, iW, iH };
+}
+
+function clientToImgPx(clientX, clientY) {
+  const canvas = document.getElementById('mapCanvas');
+  const rect   = canvas.getBoundingClientRect();
+  const d = getDisplay();
+  const cx = clientX - rect.left, cy = clientY - rect.top;
+  const ix = (cx - d.offX) / d.scale, iy = (cy - d.offY) / d.scale;
+  if (ix < 0 || ix > d.iW || iy < 0 || iy > d.iH) return null;
+  return { x: ix, y: iy };
+}
+
+function imgToCanvas(ix, iy) {
+  const d = getDisplay();
+  return { x: ix * d.scale + d.offX, y: iy * d.scale + d.offY };
+}
+
+function findNearest(lat, lon, maxDeg) {
+  let best = null, bestD = Infinity;
+  for (const [code, info] of Object.entries(DEP_COORDS)) {
+    if (!ACTIVE_SITES.has(code)) continue;
+    const d = Math.hypot(info.lat - lat, info.lon - lon);
+    if (d < bestD && d < maxDeg) { bestD = d; best = code; }
+  }
+  return best;
+}
+
+/* ── Canvas drawing ────────────────────────────────────────────────────────── */
+let hoveredCode = null;
+
+function resizeCanvas() {
+  const wrap = document.getElementById('mapWrap');
+  const canvas = document.getElementById('mapCanvas');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+
+function drawMarkers() {
+  if (!geoTransform) return;
+  const canvas = document.getElementById('mapCanvas');
+  const ctx    = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const summaries = S.data?.summaries || {};
+  const avgs = {};
+  for (const [site, sums] of Object.entries(summaries)) {
+    if (S.param && sums[S.param] !== undefined) avgs[site] = sums[S.param];
+  }
+  // Also include cached site data
+  for (const [site, cols] of Object.entries(S.data?.data || {})) {
+    if (avgs[site] !== undefined || !S.param) continue;
+    const s = filterYr(cols[S.param] || []);
+    if (s.length) avgs[site] = mean(s.map(d => d[1]));
+  }
+
+  const vals = Object.values(avgs);
+  const vmin = vals.length ? Math.min(...vals) : 0;
+  const vmax = vals.length ? Math.max(...vals) : 1;
+  const scale = colorScale(S.param || '');
+
+  // Update legend
+  updateLegend(vmin, vmax, scale);
+
+  for (const [code, info] of Object.entries(DEP_COORDS)) {
+    if (!ACTIVE_SITES.has(code)) continue;
+
+    const imgPx = geoToPx(info.lat, info.lon);
+    const cp    = imgToCanvas(imgPx.x, imgPx.y);
+
+    const isSel = code === S.site1 || code === S.site2;
+    const isHov = code === hoveredCode;
+    const avg   = avgs[code];
+    const hasData = avg !== undefined;
+
+    const r = isSel ? 9 : isHov ? 8 : 6;
+    const fillColor = hasData ? lerpColor(avg, vmin, vmax, scale) : '#999';
+    const fillAlpha = hasData ? 0.82 : 0.18;
+    const isTrib = info.type === 'tributary';
+    const strokeColor = isSel ? '#fff' : isHov ? '#fff' : isTrib ? 'rgba(45,206,137,.7)' : 'rgba(0,0,0,0.45)';
+
+    // Draw filled circle
+    ctx.beginPath();
+    ctx.arc(cp.x, cp.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fillColor + Math.round(fillAlpha * 255).toString(16).padStart(2,'0');
+    ctx.fill();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = isSel ? 2.5 : 1.5;
+    ctx.stroke();
+
+    // Label for selected/hovered
+    if (isSel || isHov) {
+      ctx.font = 'bold 9px Space Grotesk, sans-serif';
+      ctx.textAlign = 'center';
+      // White halo
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.strokeText(code, cp.x, cp.y - r - 3);
+      ctx.fillStyle = '#000';
+      ctx.fillText(code, cp.x, cp.y - r - 3);
+    }
+  }
+}
+
+function updateLegend(vmin, vmax, scale) {
+  if (!S.param || !S.data) { document.getElementById('legend').style.display = 'none'; return; }
+  const param = S.data.parameters?.[S.param];
+  document.getElementById('legend').style.display = 'block';
+  document.getElementById('lgTitle').textContent = param?.label || S.param;
+  document.getElementById('lgMin').textContent = fmt(vmin, param?.unit);
+  document.getElementById('lgMax').textContent = fmt(vmax, param?.unit);
+  document.getElementById('lgBar').style.background = `linear-gradient(to right, ${scale.join(', ')})`;
+}
+
+function showTooltip(code, clientX, clientY) {
+  const tt   = document.getElementById('mapTooltip');
+  const info = DEP_COORDS[code];
+  const param = S.param ? S.data?.parameters?.[S.param] : null;
+  const summaries = S.data?.summaries || {};
+  const avg = S.param ? summaries[code]?.[S.param] : undefined;
+
+  document.getElementById('tt-code').textContent = `${code} — ${info.name}`;
+  document.getElementById('tt-name').textContent = info.type === 'tributary' ? 'Tributary' : 'Open Water';
+  document.getElementById('tt-val').textContent  = param && avg !== undefined
+    ? `${param.label}: ${fmt(avg, param.unit)}`
+    : S.param ? 'No data for this parameter' : '';
+
+  const wrap = document.getElementById('mapWrap');
+  const rect = wrap.getBoundingClientRect();
+  let tx = clientX - rect.left + 14;
+  let ty = clientY - rect.top  - 10;
+  if (tx + 220 > wrap.clientWidth)  tx = clientX - rect.left - 230;
+  if (ty + 80  > wrap.clientHeight) ty = clientY - rect.top  - 90;
+
+  tt.style.left    = tx + 'px';
+  tt.style.top     = ty + 'px';
+  tt.style.display = 'block';
+}
+
+function hideTooltip() {
+  document.getElementById('mapTooltip').style.display = 'none';
+}
+
+/* ── Canvas event handlers ─────────────────────────────────────────────────── */
+function initImageMap() {
+  const canvas = document.getElementById('mapCanvas');
+  const img    = document.getElementById('depImage');
+
+  img.addEventListener('load', () => {
+    resizeCanvas();
+    if (loadCalibration()) {
+      document.getElementById('exportCalibBtn').style.display = 'block';
+      drawMarkers();
+    } else {
+      showCalibration();
+    }
+  });
+
+  // If image already loaded (cached)
+  if (img.complete && img.naturalWidth) {
+    resizeCanvas();
+    if (loadCalibration()) {
+      document.getElementById('exportCalibBtn').style.display = 'block';
+      drawMarkers();
+    } else showCalibration();
+  }
+
+  window.addEventListener('resize', () => { resizeCanvas(); drawMarkers(); });
+
+  canvas.addEventListener('click', e => {
+    const imgPx = clientToImgPx(e.clientX, e.clientY);
+    if (!imgPx) return;
+
+    if (calibMode) { onCalibClick(imgPx.x, imgPx.y); return; }
+    if (!geoTransform) return;
+
+    const geo  = pxToGeo(imgPx.x, imgPx.y);
+    const code = findNearest(geo.lat, geo.lon, 0.03);
+    if (code) onStationClick(code);
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const imgPx = clientToImgPx(e.clientX, e.clientY);
+    if (!imgPx || !geoTransform) { hideTooltip(); return; }
+
+    const geo  = pxToGeo(imgPx.x, imgPx.y);
+    const code = findNearest(geo.lat, geo.lon, 0.025);
+
+    if (code !== hoveredCode) {
+      hoveredCode = code;
+      drawMarkers();
+    }
+    if (code) showTooltip(code, e.clientX, e.clientY);
+    else hideTooltip();
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    hoveredCode = null;
+    hideTooltip();
+    drawMarkers();
+  });
+}
+
+function onStationClick(code) {
+  if (S.comparing) {
+    if (S.slot === 1) { S.site1 = code; setSlot(2); }
+    else              { S.site2 = code; }
+    document.getElementById('cmp-name1').textContent = S.site1
+      ? `${S.site1}${siteInfo(S.site1).name ? ' — ' + siteInfo(S.site1).name : ''}` : '— Select on map';
+    document.getElementById('cmp-name2').textContent = S.site2
+      ? `${S.site2}${siteInfo(S.site2).name ? ' — ' + siteInfo(S.site2).name : ''}` : '— Select on map';
+    showView('cmp');
+    renderCompare();
+  } else {
+    S.site1 = code; S.site2 = null;
+    showView('single');
+    renderSingle();
+  }
+  drawMarkers();
+}
+
+/* ── Data loading (identical to original) ──────────────────────────────────── */
+const CSV_FILE = 'Harbor_Water_Quality_20260701.csv';
 
 function showDownloadDate() {
   const m = CSV_FILE.match(/(\d{4})(\d{2})(\d{2})/);
   if (!m) return;
-  const d = new Date(+m[1], +m[2] - 1, +m[3]);
-  const formatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  document.getElementById('downloadDateTxt').textContent = formatted;
+  const d = new Date(+m[1], +m[2]-1, +m[3]);
+  document.getElementById('downloadDateTxt').textContent =
+    d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   document.getElementById('downloadDateBadge').style.display = 'block';
 }
 
-/* ── Map ─────────────────────────────────────────────────────────────────── */
-function initMap() {
-  leafmap = L.map('map', { center: [40.65, -74.01], zoom: 11, zoomControl: true });
-  L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    { attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 19 }
-  ).addTo(leafmap);
-}
-
-/* ── Data loading — tiny index on startup, per-site files on demand ─────── */
-const siteCache = {};
-
 function loadCSV() {
-  txt('Loading…');
   fetch('data.json')
     .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-    .then(index => {
-      index.data = {};   // time series loaded per-site on demand
-      document.getElementById('veil').style.display = 'none';
-      onDataReady(index);
-    })
+    .then(index => { index.data = {}; onDataReady(index); })
     .catch(() => showLoadError(
       'Could not load <code style="color:var(--accent)">data.json</code>.<br>' +
       'Run <code style="color:var(--accent)">process_data.R</code> in RStudio first.'
@@ -668,177 +861,65 @@ async function fetchSiteData(siteName) {
     const r = await fetch(`data/${encodeURIComponent(siteName)}.json`);
     if (!r.ok) return {};
     const raw = await r.json();
-    // Convert days → milliseconds
-    for (const series of Object.values(raw)) {
-      for (const pt of series) pt[0] = pt[0] * 86400000;
-    }
+    for (const series of Object.values(raw)) for (const pt of series) pt[0] *= 86400000;
     siteCache[siteName] = raw;
     return raw;
   } catch { return {}; }
 }
 
-function discoverColumns() {}
-
 function showLoadError(msg) {
-  document.getElementById('veil').innerHTML =
-    `<div style="text-align:center; padding:32px; color:var(--muted);">
-      <div style="font-size:2.2rem; margin-bottom:12px;">⚠️</div>
-      <div style="font-size:.85rem; line-height:1.7;">${msg}</div>
-    </div>`;
+  document.getElementById('mapWrap').innerHTML +=
+    `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(7,17,31,.9);z-index:200;">
+       <div style="text-align:center;padding:32px;"><div style="font-size:2rem;margin-bottom:12px;">⚠️</div>
+       <div style="font-size:.85rem;color:#527a99;line-height:1.7;">${msg}</div></div></div>`;
 }
 
-/* ── App setup after data loaded ────────────────────────────────────────── */
-
-// Parameter groups: each entry is [group label, [...label substrings to match]]
+/* ── Parameter groups ── */
 const PARAM_GROUPS = [
-  ['Dissolved Oxygen', [
-    'winkler method top dissolved oxygen',
-    'winkler method bottom dissolved oxygen',
-    'ctd (conductivity, temperature, depth profiler) top dissolved oxygen',
-    'ctd (conductivity_1, temperature_1, depth profiler) bottom dissolved oxygen',
-    'percentage o2 saturation top',
-    'percentage o2 saturation bottom',
-    'top five-day biochemical oxygen demand',
-    'bottom five-day biochemical oxygen demand',
-    'oakwood bod top',
-    'oakwood bod bottom',
-  ]],
-  ['pH & ORP', [
-    'top ph',
-    'bottom ph',
-    'ctd (conductivity_2, temperature_2, depth profiler) ph top',
-    'ctd (conductivity_3, temperature_3, depth profiler) ph bottom',
-    'oxidation reduction potential (mv) top',
-    'oxidation reduction potential (mv) bottom',
-  ]],
-  ['Temperature', [
-    'top sample temperature',
-    'bottom sample temperature',
-    'top sample temperature  ysi',
-    'bottom sample temperature ysi',
-  ]],
-  ['Salinity & Conductivity', [
-    'top salinity',
-    'bottom salinity',
-    'top sample salinity ysi',
-    'bottom sample salinity ysi',
-    'top conductivity',
-    'bottom conductivity',
-    'top sigma-t',
-    'bottom sigma-t',
-  ]],
-  ['Bacteria — Coliform', [
-    'top fecal coliform bacteria',
-    'bottom fecal coliform bacteria',
-    'top total coliform cells',
-    'top bottom coliform cells',
-    'top coliform',
-    'bottom coliform',
-    'top bacteria # per c.c. 1909',
-    'bottom bacteria # per c.c. 1909',
-  ]],
-  ['Bacteria — Enterococcus', [
-    'top enterococci bacteria',
-    'bottom enterococci bacteria',
-  ]],
-  ['Nutrients — Nitrogen', [
-    'top nitrate/nitrite',
-    'bottom nitrate/nitrite',
-    'top ammonium',
-    'bottom ammonium',
-    'top total kjeldhal nitrogen',
-    'bottom total kjeldhal nitrogen',
-  ]],
-  ['Nutrients — Phosphorus', [
-    'top ortho-phosphorus',
-    'bottom ortho-phosphorus',
-    'total phosphorus',
-    'bottom total phosphorus',
-  ]],
-  ['Nutrients — Carbon & Silica', [
-    'top total organic carbon',
-    'top dissolved organic carbon',
-    'bottom dissolved organic carbon',
-    'top silica',
-    'bottom silica',
-  ]],
-  ['Chlorophyll & Fluorescence', [
-    "top active chlorophyll 'a'",
-    "bottom active chlorophyll 'a'",
-    'chlorophyll top sample field',
-    'chlorophyll bottom sample field',
-    'top fluorometer',
-    'bottom fluorometer',
-  ]],
-  ['Water Clarity & Light', [
-    'secchi depth',
-    'light trans (% transparency) top',
-    'light trans (% transparency) bottom',
-    'top turbidity',
-    'bottom turbidity',
-    'top sample par',
-    'bottom sample par',
-    'top sample photosysthetically active radiation',
-  ]],
-  ['Physical & Depth', [
-    'site actual depth',
-    'top sample depth',
-    'bottom sample depth',
-    'top sample depth  ysi',
-    'top total suspended solid',
-    'bottom total suspended solid',
-  ]],
-  ['Other / Historical', [
-    'top pcb plate count',
-    'bottom pcb plate count',
-  ]],
+  ['Dissolved Oxygen',['winkler method top dissolved oxygen','winkler method bottom dissolved oxygen','ctd (conductivity, temperature, depth profiler) top dissolved oxygen','ctd (conductivity_1, temperature_1, depth profiler) bottom dissolved oxygen','percentage o2 saturation top','percentage o2 saturation bottom','top five-day biochemical oxygen demand','bottom five-day biochemical oxygen demand','oakwood bod top','oakwood bod bottom']],
+  ['pH & ORP',['top ph','bottom ph','ctd (conductivity_2, temperature_2, depth profiler) ph top','ctd (conductivity_3, temperature_3, depth profiler) ph bottom','oxidation reduction potential (mv) top','oxidation reduction potential (mv) bottom']],
+  ['Temperature',['top sample temperature','bottom sample temperature','top sample temperature  ysi','bottom sample temperature ysi']],
+  ['Salinity & Conductivity',['top salinity','bottom salinity','top sample salinity ysi','bottom sample salinity ysi','top conductivity','bottom conductivity','top sigma-t','bottom sigma-t']],
+  ['Bacteria — Coliform',['top fecal coliform bacteria','bottom fecal coliform bacteria','top total coliform cells','top bottom coliform cells','top coliform','bottom coliform','top bacteria # per c.c. 1909','bottom bacteria # per c.c. 1909']],
+  ['Bacteria — Enterococcus',['top enterococci bacteria','bottom enterococci bacteria']],
+  ['Nutrients — Nitrogen',['top nitrate/nitrite','bottom nitrate/nitrite','top ammonium','bottom ammonium','top total kjeldhal nitrogen','bottom total kjeldhal nitrogen']],
+  ['Nutrients — Phosphorus',['top ortho-phosphorus','bottom ortho-phosphorus','total phosphorus','bottom total phosphorus']],
+  ['Nutrients — Carbon & Silica',['top total organic carbon','top dissolved organic carbon','bottom dissolved organic carbon','top silica','bottom silica']],
+  ['Chlorophyll & Fluorescence',["top active chlorophyll 'a'","bottom active chlorophyll 'a'",'chlorophyll top sample field','chlorophyll bottom sample field','top fluorometer','bottom fluorometer']],
+  ['Water Clarity & Light',['secchi depth','light trans (% transparency) top','light trans (% transparency) bottom','top turbidity','bottom turbidity','top sample par','bottom sample par','top sample photosysthetically active radiation']],
+  ['Physical & Depth',['site actual depth','top sample depth','bottom sample depth','top sample depth  ysi','top total suspended solid','bottom total suspended solid']],
+  ['Other / Historical',['top pcb plate count','bottom pcb plate count']],
 ];
 
 function populateParamSelect(appData) {
   const sel = document.getElementById('paramSel');
   sel.innerHTML = '';
   addOpt(sel, '', '— Choose parameter —');
-
-  const params   = appData.parameters;          // col → {label, unit}
+  const params = appData.parameters;
   const assigned = new Set();
-
   for (const [groupName, matches] of PARAM_GROUPS) {
     const groupCols = [];
-
     for (const match of matches) {
-      // Find the column whose label matches (case-insensitive)
-      const col = Object.entries(params).find(([, info]) =>
-        info.label.toLowerCase() === match.toLowerCase()
-      )?.[0];
-      if (col && !assigned.has(col)) {
-        groupCols.push(col);
-        assigned.add(col);
-      }
+      const col = Object.entries(params).find(([,info]) => info.label.toLowerCase() === match.toLowerCase())?.[0];
+      if (col && !assigned.has(col)) { groupCols.push(col); assigned.add(col); }
     }
-
     if (!groupCols.length) continue;
-
     const grp = document.createElement('optgroup');
     grp.label = groupName;
     for (const col of groupCols) {
       const info = params[col];
-      const opt  = document.createElement('option');
-      opt.value       = col;
-      opt.textContent = info.label + (info.unit ? ` (${info.unit})` : '');
+      const opt = document.createElement('option');
+      opt.value = col; opt.textContent = info.label + (info.unit ? ` (${info.unit})` : '');
       grp.appendChild(opt);
     }
     sel.appendChild(grp);
   }
-
-  // Catch-all: any parameter not yet assigned goes into a final group
   const unmatched = Object.entries(params).filter(([col]) => !assigned.has(col));
   if (unmatched.length) {
-    const grp = document.createElement('optgroup');
-    grp.label = 'Other';
+    const grp = document.createElement('optgroup'); grp.label = 'Other';
     for (const [col, info] of unmatched) {
       const opt = document.createElement('option');
-      opt.value       = col;
-      opt.textContent = info.label + (info.unit ? ` (${info.unit})` : '');
+      opt.value = col; opt.textContent = info.label + (info.unit ? ` (${info.unit})` : '');
       grp.appendChild(opt);
     }
     sel.appendChild(grp);
@@ -847,42 +928,22 @@ function populateParamSelect(appData) {
 
 function onDataReady(appData) {
   S.data = appData;
-
-  // Populate grouped parameter select
   populateParamSelect(appData);
-
-  // Auto-pick default: Top Fecal Coliform Bacteria
-  const prefer = ['top fecal coliform bacteria',
-                  'fecal coliform',
-                  'winkler method top dissolved oxygen',
-                  'dissolved oxygen'];
+  const prefer = ['top fecal coliform bacteria','fecal coliform','winkler method top dissolved oxygen','dissolved oxygen'];
   let def = null;
   for (const p of prefer) {
-    const m = Object.keys(appData.parameters).find(k =>
-      appData.parameters[k].label.toLowerCase().includes(p));
+    const m = Object.keys(appData.parameters).find(k => appData.parameters[k].label.toLowerCase().includes(p));
     if (m) { def = m; break; }
   }
   if (!def) def = Object.keys(appData.parameters)[0] || null;
   if (def) { document.getElementById('paramSel').value = def; S.param = def; }
 
-  // Render markers
-  buildMarkers();
-
-  // Stats
-  const n = Object.keys(appData.sites).length;
-  document.getElementById('siteCount').textContent =
-    `${n} monitoring station${n !== 1 ? 's' : ''} loaded`;
-
-  // Hide veil
-  document.getElementById('veil').style.display = 'none';
-
-  // Color map
-  colorMarkers();
+  const n = Object.keys(appData.sites || {}).length;
+  document.getElementById('siteCount').textContent = `${n || Object.keys(DEP_COORDS).length} monitoring stations`;
+  drawMarkers();
 }
 
-function siteInfo(name) {
-  return DEP_COORDS[name] || { type: 'open_water', name: '' };
-}
+function siteInfo(name) { return DEP_COORDS[name] || { type:'open_water', name:'' }; }
 
 function typeBadge(type) {
   return type === 'tributary'
@@ -890,563 +951,193 @@ function typeBadge(type) {
     : `<span class="qbadge" style="background:rgba(0,165,207,.12);color:var(--accent);border:1px solid rgba(0,165,207,.3);">Open Water</span>`;
 }
 
-/* ── Markers ─────────────────────────────────────────────────────────────── */
-function buildMarkers() {
-  for (const m of Object.values(markers)) leafmap.removeLayer(m);
-  for (const k in markers) delete markers[k];
-
-  for (const [name, pos] of Object.entries(S.data.sites)) {
-    if (!pos?.lat || !pos?.lon || pos.missing) continue;
-
-    const info   = siteInfo(name);
-    const border = info.type === 'tributary' ? 'rgba(45,206,137,.8)' : 'rgba(255,255,255,.6)';
-
-    const m = L.circleMarker([pos.lat, pos.lon], {
-      radius: 7, fillOpacity: .85,
-      fillColor: '#4575b4', color: border, weight: 1.5
-    });
-
-    m.bindPopup(() => buildPopup(name), { maxWidth: 260 });
-    m.on('click', () => onMarkerClick(name));
-    m.on('mouseover', function() { if (!isSelected(name)) this.setRadius(9); });
-    m.on('mouseout',  function() { if (!isSelected(name)) this.setRadius(7); });
-    m.addTo(leafmap);
-    markers[name] = m;
-  }
-}
-
-function buildPopup(name) {
-  const p    = S.param;
-  const info = p ? S.data.parameters[p] : null;
-  const si   = siteInfo(name);
-  const series = p && S.data.data[name]?.[p];
-  const filt = series ? filterYr(series) : [];
-  const avg  = filt.length ? mean(filt.map(d => d[1])) : null;
-  const div  = document.createElement('div');
-  div.innerHTML = `
-    <div class="popup-name">${name}${si.name ? ` <span style="font-weight:400;font-size:.78rem;color:var(--muted);">— ${si.name}</span>` : ''}</div>
-    <div style="margin:3px 0 5px;">${typeBadge(si.type)}</div>
-    ${info && avg !== null
-      ? `<div class="popup-val">${info.label}: ${fmt(avg, info.unit)}</div>`
-      : `<div class="popup-val" style="color:var(--muted)">No data for selection</div>`}
-    <div class="popup-hint">Click to view full data</div>`;
-  return div;
-}
-
-function isSelected(name) { return name === S.site1 || name === S.site2; }
-
-/* ── Marker coloring — uses pre-computed summaries from index ────────────── */
-function colorMarkers() {
-  if (!S.param || !S.data) return;
-  const param     = S.data.parameters[S.param];
-  const summaries = S.data.summaries || {};
-
-  // Use pre-computed averages from the index file
-  const avgs = {};
-  for (const [site, sums] of Object.entries(summaries)) {
-    if (sums[S.param] !== undefined) avgs[site] = sums[S.param];
-  }
-  // Also include any site data already loaded into cache
-  for (const [site, cols] of Object.entries(siteCache)) {
-    if (avgs[site] !== undefined) continue;
-    const series = cols[S.param];
-    if (!series?.length) continue;
-    const filt = filterYr(series);
-    if (filt.length) avgs[site] = mean(filt.map(d => d[1]));
-  }
-
-  const vals = Object.values(avgs);
-  if (!vals.length) return;
-  const vmin = Math.min(...vals), vmax = Math.max(...vals);
-
-  // Legend
-  const lgd = document.getElementById('legend');
-  lgd.style.display = 'block';
-  document.getElementById('lgTitle').textContent = param?.label || S.param;
-  document.getElementById('lgMin').textContent = fmt(vmin, param?.unit);
-  document.getElementById('lgMax').textContent = fmt(vmax, param?.unit);
-  const scale = colorScale(S.param);
-  document.getElementById('lgBar').style.background =
-    `linear-gradient(to right, ${scale.join(', ')})`;
-
-  // Update markers
-  for (const [name, m] of Object.entries(markers)) {
-    const sel = isSelected(name);
-    const avg = avgs[name];
-
-    if (avg === undefined) {
-      m.setStyle({ fillColor: '#4a6070', fillOpacity: .15,
-                   radius: sel ? 10 : 5, weight: .8,
-                   color: 'rgba(255,255,255,.12)' });
-    } else {
-      const color  = lerpColor(avg, vmin, vmax, scale);
-      const isTrib = siteInfo(name).type === 'tributary';
-      const border = sel ? '#fff' : isTrib ? 'rgba(45,206,137,.8)' : 'rgba(255,255,255,.5)';
-      m.setStyle({ fillColor: color, fillOpacity: .9,
-                   radius: sel ? 10 : 7, weight: sel ? 2.5 : 1.5, color: border });
-    }
-  }
-}
-
-/* ── Site selection ──────────────────────────────────────────────────────── */
-function onMarkerClick(name) {
-  if (S.comparing) {
-    if (S.slot === 1) { S.site1 = name; setSlot(2); }
-    else               { S.site2 = name; }
-    document.getElementById('cmp-name1').textContent = S.site1
-      ? `${S.site1}${siteInfo(S.site1).name ? ' — ' + siteInfo(S.site1).name : ''}`
-      : '— Select on map';
-    document.getElementById('cmp-name2').textContent = S.site2
-      ? `${S.site2}${siteInfo(S.site2).name ? ' — ' + siteInfo(S.site2).name : ''}`
-      : '— Select on map';
-    showView('cmp');
-    renderCompare();
-  } else {
-    S.site1 = name; S.site2 = null;
-    showView('single');
-    renderSingle();
-  }
-  colorMarkers();
-}
-
+/* ── Side panel ── */
 function showView(mode) {
   document.getElementById('emptyState').style.display = 'none';
-  const sv = document.getElementById('singleView');
-  const cv = document.getElementById('cmpView');
-  sv.style.display = mode === 'single' ? 'flex' : 'none';
-  cv.style.display = mode === 'cmp'    ? 'flex' : 'none';
+  document.getElementById('singleView').style.display = mode === 'single' ? 'flex' : 'none';
+  document.getElementById('cmpView').style.display    = mode === 'cmp'    ? 'flex' : 'none';
 }
 
-/* ── Single-site rendering ───────────────────────────────────────────────── */
 async function renderSingle() {
-  const name = S.site1;
-  const p    = S.param;
-  const info = p ? S.data.parameters[p] : null;
-  const si   = siteInfo(name);
-
+  const name = S.site1, p = S.param, info = p ? S.data.parameters[p] : null, si = siteInfo(name);
   document.getElementById('sv-name').textContent = name;
-
-  // Show loading state
-  document.getElementById('sv-meta').innerHTML =
-    `<span style="color:var(--muted)">Loading…</span>`;
-
-  // Fetch site data (cached after first load)
+  document.getElementById('sv-meta').innerHTML = `<span style="color:var(--muted)">Loading…</span>`;
   const siteData = await fetchSiteData(name);
-  S.data.data[name] = siteData;   // store so other functions can access
-
-  const series = p ? (siteData[p] || []) : [];
-  const filt   = filterYr(series);
-  const vals   = filt.map(d => d[1]);
-  const st     = stats(vals);
-
-  // Second line: sample count + parameter + type badge
-  const countLine = filt.length
-    ? `${filt.length} samples · ${info?.label || p}${info?.unit ? ' (' + info.unit + ')' : ''} · ${S.yrFrom}–${S.yrTo}`
-    : 'No data for selected parameter / range';
-  document.getElementById('sv-meta').innerHTML =
-    (si.name ? `<div style="color:var(--text);margin-bottom:3px;">${si.name}</div>` : '') +
-    `<div>${countLine}</div>`;
-
-  document.getElementById('sv-badge').innerHTML =
-    typeBadge(si.type) + (qualityBadge(st.mean, p) ? ' ' + qualityBadge(st.mean, p) : '');
-
-  drawTimeSeries('c-ts',  filt, '#00a5cf', info?.unit);
+  S.data.data[name] = siteData;
+  const series = p ? (siteData[p] || []) : [], filt = filterYr(series), vals = filt.map(d => d[1]), st = stats(vals);
+  const countLine = filt.length ? `${filt.length} samples · ${info?.label||p}${info?.unit?' ('+info.unit+')':''} · ${S.yrFrom}–${S.yrTo}` : 'No data for selected parameter / range';
+  document.getElementById('sv-meta').innerHTML = (si.name ? `<div style="color:var(--text);margin-bottom:3px;">${si.name}</div>` : '') + `<div>${countLine}</div>`;
+  document.getElementById('sv-badge').innerHTML = typeBadge(si.type) + (qualityBadge(st.mean, p) ? ' ' + qualityBadge(st.mean, p) : '');
+  drawTimeSeries('c-ts', filt, '#00a5cf', info?.unit);
   drawSeason('c-sea', filt, '#00a5cf', info?.unit);
   fillStats('sv-stats', st, info?.unit);
   fillThresh('sv-thresh', st, p, info?.unit);
 }
 
-/* ── Compare rendering ───────────────────────────────────────────────────── */
 async function renderCompare() {
-  const p    = S.param;
-  const info = p ? S.data.parameters[p] : null;
-
-  async function doSide(canvasTs, canvasSea, statsEl, site, color) {
+  const p = S.param, info = p ? S.data.parameters[p] : null;
+  async function doSide(ts, sea, sEl, site, color) {
     if (!site) {
-      const canvas = document.getElementById(canvasTs);
-      if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
-      const s = document.getElementById(statsEl);
-      if (s) s.innerHTML = '<tr><td colspan="2" class="no-data">Select a site</td></tr>';
+      const cv = document.getElementById(ts); if (cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+      const s = document.getElementById(sEl); if (s) s.innerHTML = '<tr><td colspan="2" class="no-data">Select a site</td></tr>';
       return;
     }
-    const siteData = await fetchSiteData(site);
-    S.data.data[site] = siteData;
-    const series = p ? (siteData[p] || []) : [];
-    const filt   = filterYr(series);
-    const st     = stats(filt.map(d => d[1]));
-    drawTimeSeries(canvasTs, filt, color, info?.unit);
-    drawSeason(canvasSea, filt, color, info?.unit);
-    fillStats(statsEl, st, info?.unit);
+    const sd = await fetchSiteData(site); S.data.data[site] = sd;
+    const filt = filterYr(sd[p] || []), st = stats(filt.map(d => d[1]));
+    drawTimeSeries(ts, filt, color, info?.unit);
+    drawSeason(sea, filt, color, info?.unit);
+    fillStats(sEl, st, info?.unit);
   }
-
-  await Promise.all([
-    doSide('c-ts2','c-sea2','cmp-stats1', S.site1, '#00a5cf'),
-    doSide('c-ts3','c-sea3','cmp-stats2', S.site2, '#fd7e14'),
-  ]);
-
-  // Overlay
+  await Promise.all([doSide('c-ts2','c-sea2','cmp-stats1',S.site1,'#00a5cf'), doSide('c-ts3','c-sea3','cmp-stats2',S.site2,'#fd7e14')]);
   const ovSec = document.getElementById('overlaySec');
   if (S.site1 && S.site2) {
     ovSec.style.display = 'block';
-    const d1 = filterYr(S.data.data[S.site1]?.[p] || []).map(d => ({ x: d[0], y: d[1] }));
-    const d2 = filterYr(S.data.data[S.site2]?.[p] || []).map(d => ({ x: d[0], y: d[1] }));
+    const d1 = filterYr(S.data.data[S.site1]?.[p]||[]).map(d=>({x:d[0],y:d[1]}));
+    const d2 = filterYr(S.data.data[S.site2]?.[p]||[]).map(d=>({x:d[0],y:d[1]}));
     drawOverlay('c-overlay', d1, S.site1, d2, S.site2, info?.unit);
-  } else {
-    ovSec.style.display = 'none';
-  }
+  } else { ovSec.style.display = 'none'; }
 }
 
-/* ── Chart drawing ───────────────────────────────────────────────────────── */
-const CHART_DEFAULTS = {
-  animation: false, responsive: true, maintainAspectRatio: true,
-  plugins: { legend: { display: false } },
-};
+/* ── Charts ── */
+const CHART_DEFAULTS = { animation:false, responsive:true, maintainAspectRatio:true, plugins:{legend:{display:false}} };
 
 function drawTimeSeries(id, data, color, unit) {
-  destroyChart(id);
-  const canvas = document.getElementById(id);
-  if (!canvas) return;
-
-  if (!data.length) {
-    canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
-    showNoData(canvas, 'No data for this selection');
-    return;
-  }
-
-  const pts = data.map(d => ({ x: d[0], y: d[1] }));
-  const dense = pts.length > 100;   // dots-only above 100 points
-
-  charts[id] = new Chart(canvas.getContext('2d'), {
-    type: 'scatter',
-    data: { datasets: [{
-      data: pts,
-      borderColor: color, backgroundColor: color + '18',
-      pointRadius: dense ? 1.5 : 2.5, pointHoverRadius: 5,
-      showLine: !dense, borderWidth: 1.4,
-    }]},
-    options: { ...CHART_DEFAULTS,
-      plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: c => `${new Date(c.parsed.x).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}: ${fmt(c.parsed.y, unit)}`
-      }}},
-      scales: {
-        x: xTimeScale(),
-        y: yScale(unit),
-      }
-    }
-  });
+  destroyChart(id); const canvas = document.getElementById(id); if (!canvas) return;
+  if (!data.length) { showNoData(canvas, 'No data for this selection'); return; }
+  const pts = data.map(d=>({x:d[0],y:d[1]})), dense = pts.length > 100;
+  charts[id] = new Chart(canvas.getContext('2d'), { type:'scatter', data:{ datasets:[{ data:pts, borderColor:color, backgroundColor:color+'18', pointRadius:dense?1.5:2.5, pointHoverRadius:5, showLine:!dense, borderWidth:1.4 }]},
+    options:{...CHART_DEFAULTS, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${new Date(c.parsed.x).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}: ${fmt(c.parsed.y,unit)}`}}},
+    scales:{x:{type:'time',time:{unit:rangeYears()>5?'year':'month'},grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#527a99',font:{size:9}},border:{color:'rgba(255,255,255,.08)'}},
+            y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#527a99',font:{size:9},callback:v=>fmt(v,unit)},border:{color:'rgba(255,255,255,.08)'},title:unit?{display:true,text:unit,color:'#527a99',font:{size:8}}:{display:false}}}} });
 }
 
 function drawSeason(id, data, color, unit) {
-  destroyChart(id);
-  const canvas = document.getElementById(id);
-  if (!canvas) return;
-
-  const avgs = Array(12).fill(null).map(() => []);
-  for (const [ts, v] of data) avgs[new Date(ts).getMonth()].push(v);
+  destroyChart(id); const canvas = document.getElementById(id); if (!canvas) return;
+  const avgs = Array(12).fill(null).map(()=>[]);
+  for (const [ts,v] of data) avgs[new Date(ts).getMonth()].push(v);
   const vals = avgs.map(a => a.length ? mean(a) : null);
-
-  charts[id] = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-      datasets: [{ data: vals, backgroundColor: color + '70', borderColor: color, borderWidth: 1 }]
-    },
-    options: { ...CHART_DEFAULTS,
-      plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: c => fmt(c.parsed.y, unit)
-      }}},
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#527a99', font: { size: 9 } },
-             border: { color: 'rgba(255,255,255,.08)' } },
-        y: yScale(unit),
-      }
-    }
-  });
+  charts[id] = new Chart(canvas.getContext('2d'), { type:'bar', data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets:[{data:vals,backgroundColor:color+'70',borderColor:color,borderWidth:1}]},
+    options:{...CHART_DEFAULTS, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.parsed.y,unit)}}},
+    scales:{x:{grid:{display:false},ticks:{color:'#527a99',font:{size:9}},border:{color:'rgba(255,255,255,.08)'}},
+            y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#527a99',font:{size:9},callback:v=>fmt(v,unit)},border:{color:'rgba(255,255,255,.08)'}}}}} });
 }
 
-function drawOverlay(id, d1, lab1, d2, lab2, unit) {
-  destroyChart(id);
-  const canvas = document.getElementById(id);
-  if (!canvas) return;
-
-  const s1 = downsample(d1, 300);
-  const s2 = downsample(d2, 300);
-
-  charts[id] = new Chart(canvas.getContext('2d'), {
-    type: 'scatter',
-    data: { datasets: [
-      { label: lab1, data: s1, borderColor: '#00a5cf', backgroundColor: '#00a5cf18',
-        pointRadius: 2, showLine: true, borderWidth: 1.3 },
-      { label: lab2, data: s2, borderColor: '#fd7e14', backgroundColor: '#fd7e1418',
-        pointRadius: 2, showLine: true, borderWidth: 1.3 },
-    ]},
-    options: { ...CHART_DEFAULTS,
-      plugins: { legend: { display: true, position: 'bottom',
-        labels: { color: '#527a99', boxWidth: 10, font: { size: 9 },
-                  padding: 10, boxHeight: 3 }},
-        tooltip: { callbacks: {
-          label: c => `${c.dataset.label}: ${fmt(c.parsed.y, unit)} (${new Date(c.parsed.x).toLocaleDateString('en-US',{year:'numeric',month:'short'})})`
-        }}
-      },
-      scales: { x: xTimeScale(), y: yScale(unit) }
-    }
-  });
-}
-
-function xTimeScale() {
-  return {
-    type: 'time', time: { unit: rangeYears() > 5 ? 'year' : 'month' },
-    grid: { color: 'rgba(255,255,255,.04)' },
-    ticks: { color: '#527a99', font: { size: 9 } },
-    border: { color: 'rgba(255,255,255,.08)' },
-  };
-}
-
-function yScale(unit) {
-  return {
-    grid: { color: 'rgba(255,255,255,.04)' },
-    ticks: { color: '#527a99', font: { size: 9 }, callback: v => fmt(v, unit) },
-    border: { color: 'rgba(255,255,255,.08)' },
-    title: unit ? { display: true, text: unit, color: '#527a99', font: { size: 8 } } : { display: false },
-  };
+function drawOverlay(id, d1, l1, d2, l2, unit) {
+  destroyChart(id); const canvas = document.getElementById(id); if (!canvas) return;
+  charts[id] = new Chart(canvas.getContext('2d'), { type:'scatter', data:{ datasets:[
+    {label:l1,data:downsample(d1,300),borderColor:'#00a5cf',backgroundColor:'#00a5cf18',pointRadius:2,showLine:true,borderWidth:1.3},
+    {label:l2,data:downsample(d2,300),borderColor:'#fd7e14',backgroundColor:'#fd7e1418',pointRadius:2,showLine:true,borderWidth:1.3},
+  ]}, options:{...CHART_DEFAULTS,plugins:{legend:{display:true,position:'bottom',labels:{color:'#527a99',boxWidth:10,font:{size:9},padding:10,boxHeight:3}},
+    tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y,unit)}`}}},
+    scales:{x:{type:'time',time:{unit:rangeYears()>5?'year':'month'},grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#527a99',font:{size:9}},border:{color:'rgba(255,255,255,.08)'}},
+            y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#527a99',font:{size:9}},border:{color:'rgba(255,255,255,.08)'}}}}} });
 }
 
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+function showNoData(canvas, msg) { const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#527a99'; ctx.font='11px Space Grotesk,system-ui'; ctx.textAlign='center'; ctx.fillText(msg,canvas.width/2,canvas.height/2+4); }
 
-function showNoData(canvas, msg) {
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = '#527a99';
-  ctx.font = '11px Space Grotesk, system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 4);
-}
-
-/* ── Stats helpers ───────────────────────────────────────────────────────── */
 function stats(vals) {
-  if (!vals.length) return { n: 0 };
-  const s = [...vals].sort((a,b) => a - b);
-  const n = s.length;
-  const mn = s.reduce((a,b) => a + b, 0) / n;
-  const med = n % 2 ? s[Math.floor(n/2)] : (s[n/2-1] + s[n/2]) / 2;
-  const sd  = Math.sqrt(s.reduce((a,b) => a + (b - mn) ** 2, 0) / n);
-  return {
-    n, min: s[0], max: s[n-1], mean: mn, median: med, sd,
-    p25: s[Math.floor(n*.25)], p75: s[Math.floor(n*.75)],
-  };
+  if (!vals.length) return {n:0};
+  const s=[...vals].sort((a,b)=>a-b), n=s.length, mn=s.reduce((a,b)=>a+b,0)/n;
+  const med=n%2?s[Math.floor(n/2)]:(s[n/2-1]+s[n/2])/2;
+  const sd=Math.sqrt(s.reduce((a,b)=>a+(b-mn)**2,0)/n);
+  return {n,min:s[0],max:s[n-1],mean:mn,median:med,sd,p25:s[Math.floor(n*.25)],p75:s[Math.floor(n*.75)]};
 }
-
 function fillStats(id, st, unit) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (!st.n) {
-    el.innerHTML = '<tr><td colspan="2" class="no-data">No data for selected range</td></tr>';
-    return;
-  }
-  el.innerHTML = [
-    ['Samples',   st.n.toLocaleString()],
-    ['Min',       fmt(st.min, unit)],
-    ['Max',       fmt(st.max, unit)],
-    ['Mean',      fmt(st.mean, unit)],
-    ['Median',    fmt(st.median, unit)],
-    ['Std Dev',   fmt(st.sd, unit)],
-    ['25th %ile', fmt(st.p25, unit)],
-    ['75th %ile', fmt(st.p75, unit)],
-  ].map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  const el = document.getElementById(id); if (!el) return;
+  if (!st.n) { el.innerHTML='<tr><td colspan="2" class="no-data">No data for selected range</td></tr>'; return; }
+  el.innerHTML=[['Samples',st.n.toLocaleString()],['Min',fmt(st.min,unit)],['Max',fmt(st.max,unit)],['Mean',fmt(st.mean,unit)],['Median',fmt(st.median,unit)],['Std Dev',fmt(st.sd,unit)],['25th %ile',fmt(st.p25,unit)],['75th %ile',fmt(st.p75,unit)]].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
 }
-
 function fillThresh(id, st, param, unit) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const info = getThreshInfo(param);
-  if (!info || !st.n) { el.innerHTML = ''; return; }
-
-  let html = `<div style="font-size:.68rem; margin-top:2px;">
-    <div style="color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-size:.6rem; margin-bottom:5px;">NYS Water Quality Standards</div>`;
-
-  for (const [label, {val, dir}] of Object.entries(info)) {
-    const pass = dir === 'hi' ? st.mean >= val : st.mean <= val;
-    const cls  = pass ? 'thresh-good' : 'thresh-bad';
-    const sym  = pass ? '✓' : '✗';
-    html += `<div style="margin-bottom:3px;">
-      <span class="${cls}">${sym}</span>
-      <span style="color:var(--muted);"> ${label}: </span>
-      <span class="${cls}" style="font-family:var(--mono); font-size:.7rem;">${val} ${unit}</span>
-    </div>`;
+  const el = document.getElementById(id); if (!el) return;
+  const info = getThreshInfo(param); if (!info || !st.n) { el.innerHTML=''; return; }
+  let html=`<div style="font-size:.68rem;margin-top:2px;"><div style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.6rem;margin-bottom:5px;">NYS Water Quality Standards</div>`;
+  for (const [label,{val,dir}] of Object.entries(info)) {
+    const pass = dir==='hi'?st.mean>=val:st.mean<=val;
+    html+=`<div style="margin-bottom:3px;"><span class="${pass?'thresh-good':'thresh-bad'}">${pass?'✓':'✗'}</span> <span style="color:var(--muted)">${label}: </span><span class="${pass?'thresh-good':'thresh-bad'}" style="font-family:var(--mono);font-size:.7rem;">${val} ${unit}</span></div>`;
   }
-  html += '</div>';
-  el.innerHTML = html;
+  html+='</div>'; el.innerHTML=html;
 }
-
 function qualityBadge(avg, param) {
-  if (avg === undefined || avg === null || isNaN(avg)) return '';
-  const lo = param?.toLowerCase() || '';
-
-  if (lo.includes('fecal coliform') || lo.includes('total coliform')) {
-    if (avg <= 200)  return `<span class="qbadge q-good">✓ Bathing std</span>`;
-    if (avg <= 1000) return `<span class="qbadge q-warn">⚠ Exceeds bathing</span>`;
-    return `<span class="qbadge q-bad">✗ Poor quality</span>`;
-  }
-  if (lo.includes('enterococ')) {
-    return avg <= 35
-      ? `<span class="qbadge q-good">✓ Bathing std</span>`
-      : `<span class="qbadge q-bad">✗ Exceeds std</span>`;
-  }
-  if (lo.includes('dissolved oxygen') || lo.includes('winkler')) {
-    return avg >= 5.0
-      ? `<span class="qbadge q-good">✓ Adequate DO</span>`
-      : `<span class="qbadge q-bad">✗ Low DO</span>`;
-  }
+  if (avg===undefined||avg===null||isNaN(avg)) return '';
+  const lo=(param||'').toLowerCase();
+  if (lo.includes('fecal coliform')||lo.includes('total coliform')) { if(avg<=200)return`<span class="qbadge q-good">✓ Bathing std</span>`;if(avg<=1000)return`<span class="qbadge q-warn">⚠ Exceeds bathing</span>`;return`<span class="qbadge q-bad">✗ Poor quality</span>`; }
+  if (lo.includes('enterococ')) return avg<=35?`<span class="qbadge q-good">✓ Bathing std</span>`:`<span class="qbadge q-bad">✗ Exceeds std</span>`;
+  if (lo.includes('dissolved oxygen')||lo.includes('winkler')) return avg>=5?`<span class="qbadge q-good">✓ Adequate DO</span>`:`<span class="qbadge q-bad">✗ Low DO</span>`;
   return '';
 }
-
 function getThreshInfo(param) {
-  const lo = (param || '').toLowerCase();
-  if (lo.includes('fecal coliform') || lo.includes('total coliform'))
-    return { 'Bathing (30-day avg)': {val:200, dir:'lo'}, 'Fishing/boating': {val:1000, dir:'lo'} };
-  if (lo.includes('enterococ'))
-    return { 'Bathing standard': {val:35, dir:'lo'} };
-  if (lo.includes('dissolved oxygen') || lo.includes('winkler'))
-    return { 'State minimum': {val:5.0, dir:'hi'} };
+  const lo=(param||'').toLowerCase();
+  if(lo.includes('fecal coliform')||lo.includes('total coliform'))return{'Bathing (30-day avg)':{val:200,dir:'lo'},'Fishing/boating':{val:1000,dir:'lo'}};
+  if(lo.includes('enterococ'))return{'Bathing standard':{val:35,dir:'lo'}};
+  if(lo.includes('dissolved oxygen')||lo.includes('winkler'))return{'State minimum':{val:5.0,dir:'hi'}};
   return null;
 }
 
-/* ── Controls ────────────────────────────────────────────────────────────── */
+/* ── Controls ── */
 function bindControls() {
-  on('paramSel', 'change', e => {
-    S.param = e.target.value || null;
-    colorMarkers();
-    refresh();
-  });
-
-  on('yrFrom', 'change', e => {
-    const v = +e.target.value;
-    if (v >= 1909 && v <= S.yrTo) { S.yrFrom = v; colorMarkers(); refresh(); }
-  });
-
-  on('yrTo', 'change', e => {
-    const v = +e.target.value;
-    if (v >= S.yrFrom && v <= 2030) { S.yrTo = v; colorMarkers(); refresh(); }
-  });
-
-  on('cmpToggle', 'change', e => {
-    S.comparing = e.target.checked;
-    document.getElementById('cmpLbl').textContent = S.comparing ? 'On' : 'Off';
-    const side = document.getElementById('side');
-    side.classList.toggle('cmp', S.comparing);
-
-    if (S.comparing) {
-      // Move current site into slot 1
-      if (S.site1) {
-        document.getElementById('cmp-name1').textContent = S.site1;
-        S.slot = 2;
-        document.getElementById('slot1').classList.add('active');
-        document.getElementById('slot2').classList.remove('active');
-        document.getElementById('slot2').classList.add('active');
-      }
-      showView('cmp');
-      renderCompare();
-    } else {
-      S.site2 = null;
-      if (S.site1) { showView('single'); renderSingle(); }
-      else {
-        document.getElementById('emptyState').style.display = 'flex';
-        document.getElementById('singleView').style.display = 'none';
-        document.getElementById('cmpView').style.display = 'none';
-      }
-    }
-    colorMarkers();
+  on('paramSel','change',e=>{S.param=e.target.value||null;drawMarkers();refresh();});
+  on('yrFrom','change',e=>{const v=+e.target.value;if(v>=1909&&v<=S.yrTo){S.yrFrom=v;refresh();}});
+  on('yrTo',  'change',e=>{const v=+e.target.value;if(v>=S.yrFrom&&v<=2030){S.yrTo=v;refresh();}});
+  on('cmpToggle','change',e=>{
+    S.comparing=e.target.checked;
+    document.getElementById('cmpLbl').textContent=S.comparing?'On':'Off';
+    document.getElementById('side').classList.toggle('cmp',S.comparing);
+    if(S.comparing){showView('cmp');renderCompare();}
+    else{S.site2=null;if(S.site1){showView('single');renderSingle();}else{document.getElementById('emptyState').style.display='flex';document.getElementById('singleView').style.display='none';document.getElementById('cmpView').style.display='none';}}
+    drawMarkers();
   });
 }
-
 function setSlot(n) {
-  S.slot = n;
-  document.getElementById('slot1').classList.toggle('active', n === 1);
-  document.getElementById('slot2').classList.toggle('active', n === 2);
+  S.slot=n;
+  document.getElementById('slot1').classList.toggle('active',n===1);
+  document.getElementById('slot2').classList.toggle('active',n===2);
 }
-window.setSlot = setSlot;
+window.setSlot=setSlot;
+function refresh() { if(S.comparing)renderCompare();else if(S.site1)renderSingle(); }
 
-function refresh() {
-  if (S.comparing) renderCompare();
-  else if (S.site1) renderSingle();
+/* ── Utilities ── */
+function filterYr(series) {
+  const lo=new Date(S.yrFrom,0,1).getTime(), hi=new Date(S.yrTo,11,31,23,59).getTime();
+  return series.filter(([ts])=>ts>=lo&&ts<=hi).sort((a,b)=>a[0]-b[0]);
+}
+function mean(a){return a.reduce((s,v)=>s+v,0)/a.length;}
+function fmt(v,unit){if(v===null||v===undefined||(typeof v==='number'&&isNaN(v)))return'—';const s=Math.abs(v)>=1000?v.toFixed(0):Math.abs(v)>=10?v.toFixed(1):v.toFixed(2);return unit?`${s} ${unit}`:s;}
+function rangeYears(){return S.yrTo-S.yrFrom;}
+function downsample(arr,max){if(arr.length<=max)return arr;const step=Math.ceil(arr.length/max);return arr.filter((_,i)=>i%step===0);}
+function colorScale(param){const lo=(param||'').toLowerCase();if(lo.includes('dissolved oxygen')||lo.includes('winkler'))return['#d73027','#fc8d59','#fee090','#e0f3f8','#91bfdb','#4575b4'];if(lo.includes('coliform')||lo.includes('enterococ'))return['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];if(lo.includes('temperature'))return['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];return['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];}
+function lerpColor(v,lo,hi,scale){if(hi===lo)return scale[Math.floor(scale.length/2)];const t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));const idx=t*(scale.length-1);const i=Math.floor(idx),f=idx-i;if(i>=scale.length-1)return scale[scale.length-1];return blendHex(scale[i],scale[i+1],f);}
+function blendHex(a,b,t){const p=c=>parseInt(c,16);const ch=(s,e,i)=>Math.round(p(s.slice(i,i+2))+(p(e.slice(i,i+2))-p(s.slice(i,i+2)))*t).toString(16).padStart(2,'0');return`#${ch(a.slice(1),b.slice(1),0)}${ch(a.slice(1),b.slice(1),2)}${ch(a.slice(1),b.slice(1),4)}`;}
+function addOpt(sel,val,text){const o=document.createElement('option');o.value=val;o.textContent=text;sel.appendChild(o);}
+function on(id,ev,fn){document.getElementById(id).addEventListener(ev,fn);}
+function today(){return new Date().toISOString().slice(0,10);}
+
+/* ── Least squares (for calibration) ── */
+function lsq(A, b) {
+  const n=A.length, m=3;
+  const ATA=[[0,0,0],[0,0,0],[0,0,0]], ATb=[0,0,0];
+  for(let k=0;k<n;k++){for(let i=0;i<m;i++){ATb[i]+=A[k][i]*b[k];for(let j=0;j<m;j++)ATA[i][j]+=A[k][i]*A[k][j];}}
+  return gaussElim(ATA,ATb);
+}
+function gaussElim(A,b){
+  const n=b.length,M=A.map((row,i)=>[...row,b[i]]);
+  for(let col=0;col<n;col++){let mr=col;for(let row=col+1;row<n;row++)if(Math.abs(M[row][col])>Math.abs(M[mr][col]))mr=row;[M[col],M[mr]]=[M[mr],M[col]];for(let row=col+1;row<n;row++){const f=M[row][col]/M[col][col];for(let j=col;j<=n;j++)M[row][j]-=f*M[col][j];}}
+  const x=new Array(n).fill(0);for(let i=n-1;i>=0;i--){x[i]=M[i][n]/M[i][i];for(let k=i-1;k>=0;k--)M[k][n]-=M[k][i]*x[i];}return x;
 }
 
-function setDefaultYears() {
-  const yr = new Date().getFullYear();
-  S.yrFrom = yr - 10; S.yrTo = yr;
+/* ── Chart defaults ── */
+Chart.defaults.color='#527a99'; Chart.defaults.borderColor='rgba(255,255,255,.06)'; Chart.defaults.font.family='Space Grotesk, system-ui';
+
+/* ── Init ── */
+function init() {
+  initImageMap();
   document.getElementById('yrFrom').value = S.yrFrom;
   document.getElementById('yrTo').value   = S.yrTo;
+  bindControls();
+  showDownloadDate();
+  loadCSV();
 }
-
-/* ── Utilities ───────────────────────────────────────────────────────────── */
-function filterYr(series) {
-  const lo = new Date(S.yrFrom, 0, 1).getTime();
-  const hi = new Date(S.yrTo, 11, 31, 23, 59).getTime();
-  return series
-    .filter(([ts]) => ts >= lo && ts <= hi)
-    .sort((a, b) => a[0] - b[0]);   // ← sort by date ascending
-}
-
-function mean(a) { return a.reduce((s,v) => s+v, 0) / a.length; }
-
-function fmt(v, unit) {
-  if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return '—';
-  const s = Math.abs(v) >= 1000 ? v.toFixed(0)
-           : Math.abs(v) >= 10  ? v.toFixed(1)
-           :                      v.toFixed(2);
-  return unit ? `${s} ${unit}` : s;
-}
-
-function rangeYears() { return S.yrTo - S.yrFrom; }
-
-function downsample(arr, max) {
-  if (arr.length <= max) return arr;
-  const step = Math.ceil(arr.length / max);
-  return arr.filter((_, i) => i % step === 0);
-}
-
-function colorScale(param) {
-  const lo = (param || '').toLowerCase();
-  if (lo.includes('dissolved oxygen') || lo.includes('winkler'))
-    return ['#d73027','#fc8d59','#fee090','#e0f3f8','#91bfdb','#4575b4'];
-  if (lo.includes('coliform') || lo.includes('enterococ'))
-    return ['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];
-  if (lo.includes('temperature'))
-    return ['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];
-  return ['#4575b4','#74add1','#abd9e9','#fee090','#fc8d59','#d73027'];
-}
-
-function lerpColor(v, lo, hi, scale) {
-  if (hi === lo) return scale[Math.floor(scale.length/2)];
-  const t = Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
-  const idx = t * (scale.length - 1);
-  const i = Math.floor(idx), f = idx - i;
-  if (i >= scale.length - 1) return scale[scale.length - 1];
-  return blendHex(scale[i], scale[i+1], f);
-}
-
-function blendHex(a, b, t) {
-  const p = c => parseInt(c, 16);
-  const ch = (s, e, i) => Math.round(p(s.slice(i, i+2)) + (p(e.slice(i, i+2)) - p(s.slice(i, i+2))) * t).toString(16).padStart(2,'0');
-  return `#${ch(a.slice(1),b.slice(1),0)}${ch(a.slice(1),b.slice(1),2)}${ch(a.slice(1),b.slice(1),4)}`;
-}
-
-function addOpt(sel, val, text) {
-  const o = document.createElement('option');
-  o.value = val; o.textContent = text;
-  sel.appendChild(o);
-}
-
-function on(id, ev, fn) { document.getElementById(id).addEventListener(ev, fn); }
-function txt(s) { document.getElementById('veilTxt').textContent = s; }
-function today() { return new Date().toISOString().slice(0,10); }
-
-/* ── Chart.js global style ──────────────────────────────────────────────── */
-Chart.defaults.color         = '#527a99';
-Chart.defaults.borderColor   = 'rgba(255,255,255,.06)';
-Chart.defaults.font.family   = 'Space Grotesk, system-ui';
-
-/* ── Go ─────────────────────────────────────────────────────────────────── */
+window.resetCalibration = resetCalibration;
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
